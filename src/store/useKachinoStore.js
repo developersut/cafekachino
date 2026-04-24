@@ -123,6 +123,10 @@ export const useKachinoStore = create(
         if (!error && data) {
           set(state => ({ staff: [...state.staff, data[0]] }));
           get().addLog('Admin Action', `Added team member: ${member.name}`);
+          toast.success('Team member synced to cloud');
+        } else {
+          console.error('Staff Sync Error:', error);
+          toast.error(`Staff sync failed: ${error?.message}`);
         }
       },
       updateStaff: async (id, updated) => {
@@ -294,16 +298,26 @@ export const useKachinoStore = create(
 
       // Category actions
       addCategory: async (name) => {
+        if (get().categories.includes(name)) return;
+        
         // Optimistic local update
-        set(state => ({
-          categories: state.categories.includes(name) ? state.categories : [...state.categories, name]
-        }));
+        set(state => ({ categories: [...state.categories, name] }));
         get().addLog('Admin Action', `Added category: ${name}`);
-        // Sync to cloud in background
+        
         try {
           const { error } = await supabase.from('categories').insert([{ name }]);
-          if (error) console.error('Cloud sync failed for addCategory:', error.message);
-        } catch (e) { console.error('Cloud sync error for addCategory:', e); }
+          if (error) {
+            console.error('Cloud sync failed for addCategory:', error.message);
+            // Revert
+            set(state => ({ categories: state.categories.filter(c => c !== name) }));
+            toast.error(`Category sync failed: ${error.message}`);
+          } else {
+            toast.success('Category synced to cloud');
+          }
+        } catch (e) { 
+          console.error('Cloud sync error for addCategory:', e); 
+          set(state => ({ categories: state.categories.filter(c => c !== name) }));
+        }
       },
       deleteCategory: async (name) => {
         if (name === 'All') return;
@@ -739,9 +753,26 @@ export const useKachinoStore = create(
       addCustomization: async (cust) => {
         const tempId = Math.floor(100000000 + Math.random() * 900000000);
         const newCust = { ...cust, id: tempId };
+        
         set(state => ({ customizations: [...state.customizations, newCust] }));
-        await supabase.from('customizations').insert([newCust]);
         get().addLog('Admin Action', `Added customization: ${cust.name}`);
+
+        try {
+          const { data, error } = await supabase.from('customizations').insert([newCust]).select();
+          if (!error && data) {
+            set(state => ({
+              customizations: state.customizations.map(c => c.id === tempId ? data[0] : c)
+            }));
+            toast.success('Customization synced to cloud');
+          } else {
+            console.error('Customization Sync Error:', error);
+            set(state => ({ customizations: state.customizations.filter(c => c.id !== tempId) }));
+            toast.error(`Customization sync failed: ${error?.message}`);
+          }
+        } catch (e) {
+          console.error('Fatal customization sync error:', e);
+          set(state => ({ customizations: state.customizations.filter(c => c.id !== tempId) }));
+        }
       },
       updateCustomization: async (id, updated) => {
         set(state => ({ customizations: state.customizations.map(c => c.id === id ? updated : c) }));
