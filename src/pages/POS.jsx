@@ -242,8 +242,9 @@ const POS = () => {
     }
 
     setDiscountValue(prev => prev + value); 
+    setDiscountType('percent'); // Force percentage for loyalty rewards
     setIsRedeemed(true);
-    toast.success('Loyalty Points Applied!', { description: `${settings.currencySymbol}${value.toFixed(2)} discount added to cart.` });
+    toast.success('Loyalty Points Applied!', { description: `${value}% discount added to cart.` });
   };
 
   const handleReset = () => {
@@ -500,7 +501,7 @@ const POS = () => {
                               opacity: isRedeemed ? 0.5 : 1
                             }}
                         >
-                            {isRedeemed ? 'Redeemed' : `Redeem ${settings.currencySymbol}${settings.loyalty?.redemptionValue || 5}`}
+                            {isRedeemed ? 'Redeemed' : `Redeem ${settings.loyalty?.redemptionValue || 5}%`}
                         </button>
                     )}
                 </div>

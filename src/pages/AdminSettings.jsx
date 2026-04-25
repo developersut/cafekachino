@@ -382,7 +382,7 @@ const AdminSettings = () => {
                 />
               </div>
               <div className="form-group">
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Reward ({settings.currencySymbol})</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Reward (%)</label>
                 <input 
                   type="number"
                   className="search-bar" 
@@ -394,7 +394,7 @@ const AdminSettings = () => {
             </div>
             <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '5px' }}>
               Current Rule: Customers earn {settings.loyalty?.pointsPerDollar || 1} point per {settings.currencySymbol} spent. 
-              Redeem {settings.loyalty?.redemptionThreshold || 100} points for a {settings.currencySymbol}{settings.loyalty?.redemptionValue || 5} discount.
+              Redeem {settings.loyalty?.redemptionThreshold || 100} points for a {settings.loyalty?.redemptionValue || 5}% discount.
             </p>
           </div>
         </motion.div>
