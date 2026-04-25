@@ -45,8 +45,19 @@ const AdminSettings = () => {
     });
   };
 
+  const [loyaltyData, setLoyaltyData] = useState(settings.loyalty || {
+    pointsPerDollar: 1,
+    redemptionThreshold: 100,
+    redemptionValue: 5
+  });
+
+  const handleLoyaltySave = () => {
+    updateSettings({ loyalty: loyaltyData });
+    toast.success('Loyalty Program Rules Updated');
+  };
+
   return (
-    <div className="main-content" style={{ padding: '0 20px' }}>
+    <div className="main-content" style={{ padding: 'clamp(10px, 3vw, 25px)', maxWidth: '1600px', margin: '0 auto' }}>
       <div className="header-row" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', margin: 0 }}>System Settings</h1>
@@ -54,7 +65,7 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 400px))', gap: '20px', justifyContent: 'center' }}>
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -366,8 +377,8 @@ const AdminSettings = () => {
                 type="number"
                 className="search-bar" 
                 style={{ width: '100%' }}
-                value={settings.loyalty?.pointsPerDollar || 1}
-                onChange={(e) => updateSettings({ loyalty: { ...settings.loyalty, pointsPerDollar: parseFloat(e.target.value) || 0 } })}
+                value={loyaltyData.pointsPerDollar}
+                onChange={(e) => setLoyaltyData({ ...loyaltyData, pointsPerDollar: parseFloat(e.target.value) || 0 })}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -377,8 +388,8 @@ const AdminSettings = () => {
                   type="number"
                   className="search-bar" 
                   style={{ width: '100%' }}
-                  value={settings.loyalty?.redemptionThreshold || 100}
-                  onChange={(e) => updateSettings({ loyalty: { ...settings.loyalty, redemptionThreshold: parseInt(e.target.value) || 0 } })}
+                  value={loyaltyData.redemptionThreshold}
+                  onChange={(e) => setLoyaltyData({ ...loyaltyData, redemptionThreshold: parseInt(e.target.value) || 0 })}
                 />
               </div>
               <div className="form-group">
@@ -387,15 +398,23 @@ const AdminSettings = () => {
                   type="number"
                   className="search-bar" 
                   style={{ width: '100%' }}
-                  value={settings.loyalty?.redemptionValue || 5}
-                  onChange={(e) => updateSettings({ loyalty: { ...settings.loyalty, redemptionValue: parseFloat(e.target.value) || 0 } })}
+                  value={loyaltyData.redemptionValue}
+                  onChange={(e) => setLoyaltyData({ ...loyaltyData, redemptionValue: parseFloat(e.target.value) || 0 })}
                 />
               </div>
             </div>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '5px' }}>
-              Current Rule: Customers earn {settings.loyalty?.pointsPerDollar || 1} point per {settings.currencySymbol} spent. 
-              Redeem {settings.loyalty?.redemptionThreshold || 100} points for a {settings.loyalty?.redemptionValue || 5}% discount.
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: '5px 0' }}>
+              Current Rule: Customers earn {loyaltyData.pointsPerDollar} point per {settings.currencySymbol} spent. 
+              Redeem {loyaltyData.redemptionThreshold} points for a {loyaltyData.redemptionValue}% discount.
             </p>
+            <button 
+              className="pay-button" 
+              style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+              onClick={handleLoyaltySave}
+            >
+              <Save size={18} />
+              Save Loyalty Rules
+            </button>
           </div>
         </motion.div>
 
