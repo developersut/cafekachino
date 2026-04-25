@@ -80,6 +80,11 @@ export const useKachinoStore = create(
           phone: '+1 (555) 000-0000',
           logoUrl: '/logo.png',
           welcomeMsg: 'READ • SIP • RETREAT'
+        },
+        loyalty: {
+          pointsPerDollar: 1,
+          redemptionThreshold: 100,
+          redemptionValue: 5
         }
       },
 
@@ -789,6 +794,35 @@ export const useKachinoStore = create(
 
       setLocked: (locked) => set({ isLocked: locked }),
       setPrintOrder: (order) => set({ printOrder: order }),
+
+      // Loyalty Actions
+      updateCustomerPoints: async (customerId, pointsDelta) => {
+        const { customers, addLog } = get();
+        const customer = customers.find(c => String(c.id) === String(customerId));
+        if (!customer) return;
+
+        const newPoints = Math.max(0, (customer.points || 0) + pointsDelta);
+        
+        // Update locally
+        set(state => ({
+          customers: state.customers.map(c => 
+            String(c.id) === String(customerId) ? { ...c, points: newPoints } : c
+          )
+        }));
+
+        // Persist to Supabase if available
+        try {
+          const { error } = await supabase
+            .from('customers')
+            .update({ points: newPoints })
+            .eq('id', customerId);
+          
+          if (error) throw error;
+          addLog('Loyalty Update', `${customer.name} points updated by ${pointsDelta}. New total: ${newPoints}`);
+        } catch (err) {
+          console.error('Failed to sync points to cloud:', err);
+        }
+      },
 
 
       // Fiscal Calculations

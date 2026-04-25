@@ -74,6 +74,7 @@ const POS = () => {
   const [isNewCustomerModalOpen, setNewCustomerModalOpen] = useState(false);
   const [isPaidToggle, setIsPaidToggle] = useState(false); 
   const [pinInput, setPinInput] = useState("");
+  const [isRedeemed, setIsRedeemed] = useState(false);
   
   // Customization State
   const [customizingItem, setCustomizingItem] = useState(null);
@@ -184,9 +185,22 @@ const POS = () => {
     };
     recordSale(orderData);
     setLastOrder(orderData);
+
+    // Update Loyalty Points
+    if (selectedCustomerId) {
+      const { loyalty } = settings;
+      const pointsEarned = Math.floor(total * (loyalty?.pointsPerDollar || 1));
+      let pointsDelta = pointsEarned;
+      if (isRedeemed) {
+        pointsDelta -= (loyalty?.redemptionThreshold || 100);
+      }
+      useKachinoStore.getState().updateCustomerPoints(selectedCustomerId, pointsDelta);
+    }
+
     setCheckoutModalOpen(true);
     fireConfetti();
-    clearCart(); // NEW: Clear after success
+    clearCart(); 
+    setIsRedeemed(false); // Reset redemption
     toast.success('Order placed successfully!', {
       description: `Total: ${settings?.currencySymbol || '$'}${total.toFixed(2)}`,
       icon: <CheckCircle size={18} />,
@@ -195,7 +209,7 @@ const POS = () => {
 
     // High Security Auto-Lock
     if (settings.highSecurity) {
-      setTimeout(() => setLocked(true), 2000); // Lock shortly after success animation
+      setTimeout(() => setLocked(true), 2000); 
     }
   };
 
@@ -212,14 +226,24 @@ const POS = () => {
   };
 
   const handleRedeemPoints = () => {
+    const { loyalty } = settings;
+    const threshold = loyalty?.redemptionThreshold || 100;
+    const value = loyalty?.redemptionValue || 5;
+
     const customer = customers.find(c => String(c.id) === String(selectedCustomerId));
-    if (!customer || customer.points < 100) {
-      toast.error('Insufficient Point Balance', { description: 'Minimum 100 points required.' });
+    if (!customer || (customer.points || 0) < threshold) {
+      toast.error('Insufficient Point Balance', { description: `Minimum ${threshold} points required.` });
       return;
     }
     
-    setDiscountValue(prev => prev + 5.00); 
-    toast.success('Loyalty Points Applied!', { description: '$5.00 discount added to cart.' });
+    if (isRedeemed) {
+      toast.error('Already Redeemed', { description: 'Only one redemption per order allowed.' });
+      return;
+    }
+
+    setDiscountValue(prev => prev + value); 
+    setIsRedeemed(true);
+    toast.success('Loyalty Points Applied!', { description: `${settings.currencySymbol}${value.toFixed(2)} discount added to cart.` });
   };
 
   const handleReset = () => {
@@ -229,6 +253,7 @@ const POS = () => {
     setPaymentMethod('cash');
     setCheckoutModalOpen(false);
     setCartOpen(false);
+    setIsRedeemed(false);
     // Note: clearCart via store already resets the global session metadata.
   };
   return (
@@ -459,12 +484,23 @@ const POS = () => {
                             {customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0} pts
                         </span>
                     </div>
-                    {(customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0) >= 100 && (
+                    {(customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0) >= (settings.loyalty?.redemptionThreshold || 100) && (
                         <button 
                             onClick={handleRedeemPoints}
-                            style={{ fontSize: '10px', background: 'var(--accent-gold)', color: 'black', border: 'none', padding: '4px 10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                            disabled={isRedeemed}
+                            style={{ 
+                              fontSize: '10px', 
+                              background: isRedeemed ? 'rgba(255,255,255,0.05)' : 'var(--accent-gold)', 
+                              color: isRedeemed ? 'var(--text-muted)' : 'black', 
+                              border: 'none', 
+                              padding: '4px 10px', 
+                              borderRadius: '6px', 
+                              fontWeight: 'bold', 
+                              cursor: isRedeemed ? 'default' : 'pointer',
+                              opacity: isRedeemed ? 0.5 : 1
+                            }}
                         >
-                            Redeem $5
+                            {isRedeemed ? 'Redeemed' : `Redeem ${settings.currencySymbol}${settings.loyalty?.redemptionValue || 5}`}
                         </button>
                     )}
                 </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Save, Percent, Settings as SettingsIcon, AlertCircle, Store, MapPin, 
-  Phone, Globe, Layout, Plus, Trash2, Hash, Receipt, Shield, ShieldAlert 
+  Phone, Globe, Layout, Plus, Trash2, Hash, Receipt, Shield, ShieldAlert, Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKachinoStore } from '../store/useKachinoStore';
@@ -338,6 +338,64 @@ const AdminSettings = () => {
                   position: 'absolute', top: '4px', left: settings.highSecurity ? '28px' : '4px', transition: 'all 0.3s' 
                 }} />
              </button>
+          </div>
+        </motion.div>
+
+        {/* Loyalty Configuration */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="menu-card" 
+          style={{ padding: '22px 15px', cursor: 'default' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+            <div style={{ background: 'rgba(212, 175, 55, 0.1)', padding: '8px', borderRadius: '8px' }}>
+              <Award size={18} color="var(--accent-gold)" />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '0.9rem' }}>Loyalty Program</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Configure points and rewards</p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="form-group">
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Points per Spend ({settings.currencySymbol}1 = X pts)</label>
+              <input 
+                type="number"
+                className="search-bar" 
+                style={{ width: '100%' }}
+                value={settings.loyalty?.pointsPerDollar || 1}
+                onChange={(e) => updateSettings({ loyalty: { ...settings.loyalty, pointsPerDollar: parseFloat(e.target.value) || 0 } })}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div className="form-group">
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Goal (pts)</label>
+                <input 
+                  type="number"
+                  className="search-bar" 
+                  style={{ width: '100%' }}
+                  value={settings.loyalty?.redemptionThreshold || 100}
+                  onChange={(e) => updateSettings({ loyalty: { ...settings.loyalty, redemptionThreshold: parseInt(e.target.value) || 0 } })}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Reward ({settings.currencySymbol})</label>
+                <input 
+                  type="number"
+                  className="search-bar" 
+                  style={{ width: '100%' }}
+                  value={settings.loyalty?.redemptionValue || 5}
+                  onChange={(e) => updateSettings({ loyalty: { ...settings.loyalty, redemptionValue: parseFloat(e.target.value) || 0 } })}
+                />
+              </div>
+            </div>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '5px' }}>
+              Current Rule: Customers earn {settings.loyalty?.pointsPerDollar || 1} point per {settings.currencySymbol} spent. 
+              Redeem {settings.loyalty?.redemptionThreshold || 100} points for a {settings.currencySymbol}{settings.loyalty?.redemptionValue || 5} discount.
+            </p>
           </div>
         </motion.div>
 
