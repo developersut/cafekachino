@@ -46,7 +46,7 @@ const AdminSettings = () => {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '900px', margin: '0 auto', padding: '0 20px' }}>
+    <div className="main-content" style={{ padding: '0 20px' }}>
       <div className="header-row" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', margin: 0 }}>System Settings</h1>

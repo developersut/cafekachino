@@ -232,7 +232,7 @@ const POS = () => {
     // Note: clearCart via store already resets the global session metadata.
   };
   return (
-    <div className="pos-page">
+    <div className="pos-page" style={{ height: '100%' }}>
       {/* Main Content Area */}
       <main className="menu-section">
         <div className="main-content" style={{ padding: 'clamp(8px, 2vw, 15px)', overflowY: 'auto' }}>
@@ -426,10 +426,10 @@ const POS = () => {
         <div className="checkout-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '16px', border: '1px solid var(--glass-border)', marginTop: 'auto' }}>
           
           {/* Customer Selection (CRM) */}
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <User size={14} /> CUSTOMER
+              <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <User size={12} /> CUSTOMER
               </label>
               <button 
                 onClick={() => setNewCustomerModalOpen(true)}
@@ -503,7 +503,7 @@ const POS = () => {
           </div>
 
           {/* Summary Row */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--glass-border)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px solid var(--glass-border)' }}>
             <div className="summary-row" style={{ fontSize: 'var(--font-xs)' }}><span style={{ color: 'var(--text-muted)' }}>Subtotal</span><span>{settings.currencySymbol}{subtotal.toFixed(2)}</span></div>
             {discountAmount > 0 && (
               <div className="summary-row" style={{ fontSize: 'var(--font-xs)', color: '#ff4d4d' }}><span>Discount ({discountType === 'percent' ? discountValue + '%' : settings.currencySymbol + discountValue})</span><span>-{settings.currencySymbol}{discountAmount.toFixed(2)}</span></div>
@@ -517,7 +517,7 @@ const POS = () => {
           </div>
 
           {/* Payment Method Selector */}
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', background: 'rgba(255,255,255,0.05)', padding: '3px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '12px' }}>
             {['cash', 'card', 'other'].map(method => (
               <button 
                 key={method}
@@ -545,7 +545,7 @@ const POS = () => {
           </div>
 
           {/* Payment Section */}
-          <div style={{ marginBottom: '15px' }}>
+          <div style={{ marginBottom: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <label style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount Paid</label>
               <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '1px' }}>
@@ -566,7 +566,7 @@ const POS = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
             <input 
               type="number"
               className="search-bar"
@@ -769,7 +769,13 @@ const POS = () => {
                 <button 
                   className="pay-button" 
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'var(--bg-deep)', color: 'white', border: '1px solid var(--accent-gold)' }}
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    useKachinoStore.getState().setPrintOrder(lastOrder);
+                    setTimeout(() => {
+                      window.print();
+                      useKachinoStore.getState().setPrintOrder(null);
+                    }, 500);
+                  }}
                 >
                   <Printer size={16} />
                   Print

@@ -1,86 +1,6 @@
 /* --- RESPONSIVE ENGINE (V3 PRODUCTION) --- */
-@media (max-width: 1024px) {
-  :root { 
-    --sidebar-width: 0px; 
-  }
-  
-  .pos-container {
-    height: 100vh !important;
-    overflow: hidden !important;
-    display: flex !important;
-    flex-direction: row !important; /* Side sidebar drawer, but content is full width */
-  }
+/* Mobile/Tablet overrides moved to index.css for consistency */
 
-  .sidebar {
-    position: fixed !important;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 260px !important;
-    transform: translateX(-100%);
-    z-index: 10000 !important;
-    background: #080808 !important;
-    box-shadow: 10px 0 30px rgba(0,0,0,0.5);
-    display: flex !important;
-    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
-  }
-  
-  .sidebar.open {
-    transform: translateX(0) !important;
-  }
-
-  .content-wrapper {
-    width: 100vw !important;
-    height: 100vh !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .main-content {
-    flex: 1 !important;
-    width: 100% !important;
-    margin-left: 0 !important;
-    padding: 10px !important;
-    overflow-y: auto !important;
-    background: #080808 !important;
-  }
-  
-  .menu-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-    gap: 10px !important;
-  }
-}
-
-@media (max-width: 768px) {
-  .order-summary {
-    position: fixed !important;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 100vw !important;
-    height: 100vh !important;
-    transform: translateX(100%) !important;
-    z-index: 6000 !important;
-    background: #080808 !important;
-    padding: 0 !important;
-    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-  }
-  
-  .order-summary.open {
-    transform: translateX(0) !important;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .header-row {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-  }
-}
 
 .mobile-only { display: none !important; }
 @media (max-width: 1024px) {
@@ -128,10 +48,4 @@
   display: none;
 }
 
-@media print {
-  body * { display: none !important; }
-  .receipt-view, .receipt-view * {
-    display: block !important;
-    visibility: visible !important;
-  }
-}
+

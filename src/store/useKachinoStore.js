@@ -61,6 +61,7 @@ export const useKachinoStore = create(
       guestCount: 1,
       selectedCustomerId: null,
       customers: [],
+      printOrder: null,
       expenseCategories: ['Ingredients', 'Labor', 'Utilities', 'Rent & Maintenance', 'Marketing'],
       isLocked: false,
       customizations: [
@@ -787,6 +788,7 @@ export const useKachinoStore = create(
       },
 
       setLocked: (locked) => set({ isLocked: locked }),
+      setPrintOrder: (order) => set({ printOrder: order }),
 
 
       // Fiscal Calculations

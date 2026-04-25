@@ -136,7 +136,7 @@ const AdminExpenses = () => {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: 'fit-content' }}>
+    <div className="main-content" style={{ display: 'flex', flexDirection: 'column', minHeight: 'fit-content' }}>
       <div className="header-row" style={{ marginBottom: '15px' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', marginBottom: '4px' }}>Expenses</h1>

@@ -89,7 +89,7 @@ const OrderHistory = () => {
   });
 
   return (
-    <div className="main-content" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="header-row" style={{ marginBottom: '15px' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', marginBottom: '4px' }}>Transaction Audit</h1>
@@ -387,7 +387,8 @@ const OrderHistory = () => {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                style={{ position: 'relative', maxHeight: '95vh', overflowY: 'auto', borderRadius: '15px' }}
+                className="modal-content"
+                style={{ position: 'relative', maxHeight: '95vh', overflowY: 'auto', borderRadius: '15px', padding: 0 }}
               >
                  <button 
                     onClick={() => setShowReceiptModal(null)}
@@ -401,7 +402,11 @@ const OrderHistory = () => {
                       className="pay-button" 
                       style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                       onClick={() => {
-                         window.print();
+                         useKachinoStore.getState().setPrintOrder(showReceiptModal);
+                         setTimeout(() => {
+                           window.print();
+                           useKachinoStore.getState().setPrintOrder(null);
+                         }, 500);
                       }}
                     >
                       <Printer size={18} /> Re-print Official Receipt

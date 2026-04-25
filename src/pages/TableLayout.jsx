@@ -39,7 +39,7 @@ const TableLayout = () => {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="main-content">
       {/* Header Dashboard */}
       <div className="header-row" style={{ marginBottom: '15px' }}>
         <div>

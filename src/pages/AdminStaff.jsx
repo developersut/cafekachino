@@ -50,7 +50,7 @@ const AdminStaff = () => {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="main-content">
       <div className="header-row" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', marginBottom: '4px' }}>Team Management</h1>

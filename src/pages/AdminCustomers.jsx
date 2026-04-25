@@ -107,7 +107,7 @@ const AdminCustomers = () => {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="header-row" style={{ marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-h1)', marginBottom: '4px' }}>Customer Relationship</h1>

@@ -102,7 +102,7 @@ const AdminInventory = () => {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+    <div className="main-content" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
       
       {/* Unified Header */}
       <div className="header-row">
