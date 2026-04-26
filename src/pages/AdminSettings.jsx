@@ -46,7 +46,7 @@ const AdminSettings = () => {
   };
 
   const [loyaltyData, setLoyaltyData] = useState(settings.loyalty || {
-    pointsPerDollar: 1,
+    spendPerPoint: 1000,
     redemptionThreshold: 100,
     redemptionValue: 5
   });
@@ -372,13 +372,13 @@ const AdminSettings = () => {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="form-group">
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Points per Spend ({settings.currencySymbol}1 = X pts)</label>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Spend per Point ({settings.currencySymbol} X = 1 pt)</label>
               <input 
                 type="number"
                 className="search-bar" 
                 style={{ width: '100%' }}
-                value={loyaltyData.pointsPerDollar}
-                onChange={(e) => setLoyaltyData({ ...loyaltyData, pointsPerDollar: parseFloat(e.target.value) || 0 })}
+                value={loyaltyData.spendPerPoint}
+                onChange={(e) => setLoyaltyData({ ...loyaltyData, spendPerPoint: parseFloat(e.target.value) || 0 })}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -404,7 +404,7 @@ const AdminSettings = () => {
               </div>
             </div>
             <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: '5px 0' }}>
-              Current Rule: Customers earn {loyaltyData.pointsPerDollar} point per {settings.currencySymbol} spent. 
+              Current Rule: Customers earn 1 point per {settings.currencySymbol}{loyaltyData.spendPerPoint} spent. 
               Redeem {loyaltyData.redemptionThreshold} points for a {loyaltyData.redemptionValue}% discount.
             </p>
             <button 

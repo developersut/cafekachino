@@ -82,7 +82,7 @@ export const useKachinoStore = create(
           welcomeMsg: 'READ • SIP • RETREAT'
         },
         loyalty: {
-          pointsPerDollar: 1,
+          spendPerPoint: 1000,
           redemptionThreshold: 100,
           redemptionValue: 5
         }
@@ -617,74 +617,95 @@ export const useKachinoStore = create(
       },
 
       recordSale: async (order) => {
-        const saleId = Math.floor(Math.random() * 2147483647);
-        const sale = {
-          id: saleId,
-          timestamp: new Date().toISOString(),
-          items: order.items,
-          subtotal: order.subtotal,
-          tax: order.tax,
-          discount: order.discount || 0,
-          total: order.total,
-          amountPaid: order.amountPaid || 0,
-          change: order.change || 0,
-          paymentMethod: order.paymentMethod || 'cash',
-          status: 'completed',
-          processedBy: get().user?.name || 'System',
-          customerId: order.customerId,
-          diningMode: order.diningMode,
-          tableNumber: order.tableNumber
-        };
+        try {
+          const saleId = Math.floor(Math.random() * 2147483647);
+          const sale = {
+            id: saleId,
+            timestamp: new Date().toISOString(),
+            items: order.items,
+            subtotal: order.subtotal,
+            tax: order.tax,
+            discount: order.discount || 0,
+            total: order.total,
+            amountPaid: order.amountPaid || 0,
+            change: order.change || 0,
+            paymentMethod: order.paymentMethod || 'cash',
+            status: 'completed',
+            processedBy: get().user?.name || 'System',
+            customerId: order.customerId,
+            diningMode: order.diningMode,
+            tableNumber: order.tableNumber
+          };
 
-        // 1. Save to Cloud
-        const { data, error } = await supabase.from('sales').insert([sale]).select();
-        
-        if (!error && data) {
-          set(state => ({
-            sales: [data[0], ...state.sales].slice(0, 500),
-            items: state.items.map(item => {
-              const sold = order.items.find(i => i.id === item.id);
-              if (sold && item.trackStock !== false) {
-                const updatedItem = { ...item, stock: Math.max(0, item.stock - sold.quantity) };
-                // Async update stock in background
-                supabase.from('inventory').update({ stock: updatedItem.stock }).eq('id', item.id);
-                return updatedItem;
-              }
-              return item;
-            }),
-          }));
-        }
-
-        // Loyalty Point logic
-        if (sale.customerId) {
-          const earnedPoints = Math.floor(sale.total);
-          // If we added a 'redeemed' flag to order, we'd deduct here. 
-          // For now, let's assume if discount is exactly 5 and points >= 100, we deduct.
-          let pointDelta = earnedPoints;
-          const currentCustomer = get().customers.find(c => String(c.id) === String(sale.customerId));
+          // 1. Save to Cloud
+          const { id, ...saleToSave } = sale;
+          const { data, error } = await supabase.from('sales').insert([saleToSave]).select();
           
-          if (sale.discount >= 5 && currentCustomer && currentCustomer.points >= 100) {
-            pointDelta -= 100;
-          }
-
-          if (currentCustomer) {
-            const newPoints = (currentCustomer.points || 0) + pointDelta;
-            await supabase.from('customers').update({ points: newPoints }).eq('id', sale.customerId);
+          if (error) {
+            console.error("Supabase Sale Error:", error);
+            toast.error(`Sync Failed: ${error.message}`);
+            // Fallback: Add to local state even if cloud fails for immediate feedback
+            const fallbackSale = { ...sale, id: saleId }; // Use our generated ID
             set(state => ({
-              customers: state.customers.map(c => String(c.id) === String(sale.customerId) ? { ...c, points: newPoints } : c)
+              sales: [fallbackSale, ...state.sales].slice(0, 500)
+            }));
+          } else if (data && data[0]) {
+            set(state => ({
+              sales: [data[0], ...state.sales].slice(0, 500),
+              items: state.items.map(item => {
+                const sold = order.items.find(i => i.id === item.id);
+                if (sold && item.trackStock !== false) {
+                  const updatedItem = { ...item, stock: Math.max(0, item.stock - sold.quantity) };
+                  // Async update stock in background
+                  supabase.from('inventory').update({ stock: updatedItem.stock }).eq('id', item.id);
+                  return updatedItem;
+                }
+                return item;
+              }),
             }));
           }
-        }
 
-        // Table Session Termination
-        if (order.diningMode === 'dinein' && order.tableNumber) {
-          await get().clearTable(order.tableNumber);
-        }
+          // Loyalty Point logic
+          if (sale.customerId) {
+            const { loyalty } = get().settings;
+            const spendPerPoint = loyalty?.spendPerPoint || 1000;
+            const threshold = loyalty?.redemptionThreshold || 100;
+            
+            const earnedPoints = Math.floor(sale.total / spendPerPoint);
+            let pointDelta = earnedPoints;
+            
+            const currentCustomer = get().customers.find(c => String(c.id) === String(sale.customerId));
+            
+            // Use isRedeemed flag from order if provided, otherwise fallback to discount detection
+            const pointsRedeemed = order.isRedeemed || (sale.discount >= 5 && currentCustomer && currentCustomer.points >= threshold);
+            
+            if (pointsRedeemed && currentCustomer && currentCustomer.points >= threshold) {
+              pointDelta -= threshold;
+            }
 
-        get().addLog('POS Sale', `Processed order for ${get().settings.currencySymbol || '$'}${sale.total.toFixed(2)}`);
-        
-        // Reset Global Session
-        get().resetSession();
+            if (currentCustomer) {
+              const newPoints = Math.max(0, (currentCustomer.points || 0) + pointDelta);
+              await supabase.from('customers').update({ points: newPoints }).eq('id', sale.customerId);
+              set(state => ({
+                customers: state.customers.map(c => String(c.id) === String(sale.customerId) ? { ...c, points: newPoints } : c)
+              }));
+              get().addLog('Loyalty Update', `${currentCustomer.name} points updated: ${pointDelta > 0 ? '+' : ''}${pointDelta}. New total: ${newPoints}`);
+            }
+          }
+
+          // Table Session Termination
+          if (order.diningMode === 'dinein' && order.tableNumber) {
+            await get().clearTable(order.tableNumber);
+          }
+
+          get().addLog('POS Sale', `Processed order for ${get().settings.currencySymbol || '$'}${sale.total.toFixed(2)}`);
+          
+          // Reset Global Session
+          get().resetSession();
+        } catch (err) {
+          console.error("Fatal recordSale Error:", err);
+          toast.error("An unexpected error occurred while saving the sale.");
+        }
       },
 
       voidSale: (saleId) => {

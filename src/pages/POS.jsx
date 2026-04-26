@@ -166,7 +166,7 @@ const POS = () => {
     }, 150);
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     const orderData = { 
       id: Date.now(), 
       timestamp: new Date().toISOString(), 
@@ -181,21 +181,13 @@ const POS = () => {
       paymentMethod,
       diningMode,
       tableNumber: activeTableId,
-      customerId: selectedCustomerId
+      customerId: selectedCustomerId,
+      isRedeemed: isRedeemed
     };
-    recordSale(orderData);
+    await recordSale(orderData);
     setLastOrder(orderData);
 
-    // Update Loyalty Points
-    if (selectedCustomerId) {
-      const { loyalty } = settings;
-      const pointsEarned = Math.floor(total * (loyalty?.pointsPerDollar || 1));
-      let pointsDelta = pointsEarned;
-      if (isRedeemed) {
-        pointsDelta -= (loyalty?.redemptionThreshold || 100);
-      }
-      useKachinoStore.getState().updateCustomerPoints(selectedCustomerId, pointsDelta);
-    }
+
 
     setCheckoutModalOpen(true);
     fireConfetti();
