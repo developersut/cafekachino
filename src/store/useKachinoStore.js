@@ -736,7 +736,7 @@ export const useKachinoStore = create(
         }
       },
 
-      voidSale: (saleId) => {
+      voidSale: async (saleId) => {
         const sale = get().sales.find(s => s.id === saleId);
         if (!sale || sale.status === 'voided') return;
 
@@ -745,7 +745,10 @@ export const useKachinoStore = create(
           items: state.items.map(item => {
             const returned = sale.items.find(i => i.id === item.id);
             if (returned && item.trackStock !== false) {
-              return { ...item, stock: item.stock + returned.quantity };
+              const updatedStock = item.stock + returned.quantity;
+              // Background update
+              supabase.from('inventory').update({ stock: updatedStock }).eq('id', item.id);
+              return { ...item, stock: updatedStock };
             }
             return item;
           })
@@ -763,7 +766,50 @@ export const useKachinoStore = create(
           });
         }
 
+        // Sync Void to Cloud
+        await supabase.from('sales').update({ status: 'voided' }).eq('id', saleId);
+
         get().addLog('POS Void', `Voided order #${saleId.toString().slice(-6)} ($${sale.total.toFixed(2)}). Stock and points reverted.`);
+      },
+
+      deleteSale: async (saleId) => {
+        const sale = get().sales.find(s => s.id === saleId);
+        if (!sale) return;
+
+        // Revert stock and points if NOT already voided
+        if (sale.status !== 'voided') {
+          set(state => ({
+            items: state.items.map(item => {
+              const returned = sale.items.find(i => i.id === item.id);
+              if (returned && item.trackStock !== false) {
+                const updatedStock = item.stock + returned.quantity;
+                supabase.from('inventory').update({ stock: updatedStock }).eq('id', item.id);
+                return { ...item, stock: updatedStock };
+              }
+              return item;
+            })
+          }));
+          
+          const customer = get().customers.find(c => String(c.id) === String(sale.customerId));
+          if (customer) {
+            const { loyalty } = get().settings;
+            const spendPerPoint = Math.max(1, loyalty?.spendPerPoint || 1000);
+            const pointsToRevert = Math.floor(sale.total / spendPerPoint);
+            get().updateCustomer(customer.id, {
+              points: Math.max(0, (customer.points || 0) - pointsToRevert)
+            });
+          }
+        }
+
+        // Remove from local state
+        set(state => ({
+          sales: state.sales.filter(s => s.id !== saleId)
+        }));
+
+        // Remove from Cloud
+        await supabase.from('sales').delete().eq('id', saleId);
+
+        get().addLog('POS Delete', `Permanently deleted order #${saleId.toString().slice(-6)}. Record removed from system.`);
       },
 
       addExpense: async (expense) => {

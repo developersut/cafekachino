@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   Printer,
   Home,
-  ShoppingBag
+  ShoppingBag,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
@@ -26,11 +27,12 @@ import { exportToCSV } from '../utils/exportUtils';
 import Receipt from '../components/Receipt';
 
 const OrderHistory = () => {
-  const { sales = [], voidSale, user, settings } = useKachinoStore();
+  const { sales = [], voidSale, deleteSale, user, settings } = useKachinoStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedSale, setSelectedSale] = useState(null);
+  const [deletingSale, setDeletingSale] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(null);
   const [paymentFilter, setPaymentFilter] = useState("All");
   const [staffFilter, setStaffFilter] = useState("All");
@@ -42,6 +44,14 @@ const OrderHistory = () => {
       voidSale(selectedSale.id);
       toast.success('Transaction voided successfully');
       setSelectedSale(null);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deletingSale) {
+      deleteSale(deletingSale.id);
+      toast.success('Transaction permanently deleted');
+      setDeletingSale(null);
     }
   };
 
@@ -320,6 +330,24 @@ const OrderHistory = () => {
                       >
                         <Printer size={14} /> Receipt
                       </button>
+                      {isAdmin && (
+                        <button 
+                          onClick={() => setDeletingSale(sale)}
+                          className="tab"
+                          style={{ 
+                            padding: '6px 10px', 
+                            fontSize: '11px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            color: '#ef4444',
+                            background: 'rgba(239, 68, 68, 0.05)',
+                            borderColor: 'rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                     {sale.status === 'voided' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
@@ -342,7 +370,7 @@ const OrderHistory = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Void Confirmation Modal */}
       <AnimatePresence>
         {selectedSale && (
           <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -374,6 +402,45 @@ const OrderHistory = () => {
                   onClick={handleVoidConfirm}
                 >
                   Void Order
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Permanent Deletion Modal */}
+      <AnimatePresence>
+        {deletingSale && (
+          <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="menu-card" 
+              style={{ width: '400px', padding: '30px', textAlign: 'center', border: '1px solid #ef4444' }}
+            >
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <Trash2 size={30} color="#ef4444" />
+              </div>
+              <h2 style={{ fontSize: '1.5rem', marginBottom: '10px', color: '#ef4444' }}>Delete Record?</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '25px' }}>
+                Order <strong>#{deletingSale.id.toString().slice(-6)}</strong> will be <strong>PERMANENTLY REMOVED</strong> from the system and cloud database. Stock and points will be reverted if not already voided.
+              </p>
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <button 
+                  className="tab" 
+                  style={{ flex: 1, padding: '12px' }}
+                  onClick={() => setDeletingSale(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="pay-button" 
+                  style={{ flex: 1, padding: '12px', background: '#ef4444', color: 'white' }}
+                  onClick={handleDeleteConfirm}
+                >
+                  Delete Forever
                 </button>
               </div>
             </motion.div>
