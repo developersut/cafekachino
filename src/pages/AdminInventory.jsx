@@ -159,7 +159,17 @@ const AdminInventory = () => {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
               className="tab" 
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: 'var(--font-sm)', fontWeight: 600 }}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '10px 18px', 
+                background: 'rgba(212, 175, 55, 0.1)',
+                border: '1px solid var(--glass-border-gold)',
+                color: 'var(--accent-gold)',
+                fontSize: '0.75rem',
+                fontWeight: 700
+              }}
               onClick={() => exportToCSV(items, 'Kachino_Inventory')}
             >
               <Package size={16} /> Export CSV
@@ -178,7 +188,17 @@ const AdminInventory = () => {
         {activeTab === 'tables' && (
           <button 
             className="tab" 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: 'var(--font-sm)', fontWeight: 600 }}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '10px 18px', 
+              background: 'rgba(212, 175, 55, 0.1)',
+              border: '1px solid var(--glass-border-gold)',
+              color: 'var(--accent-gold)',
+              fontSize: '0.75rem',
+              fontWeight: 700
+            }}
             onClick={() => exportToCSV(tables, 'Kachino_Tables')}
           >
             <LayoutGrid size={16} /> Export CSV

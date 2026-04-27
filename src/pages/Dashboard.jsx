@@ -61,20 +61,48 @@ const Dashboard = () => {
   // 1. Filter out voided sales for analytics
   const validSales = useMemo(() => sales.filter(s => s.status !== 'voided'), [sales]);
 
+  // 1.5 Filter sales based on current timeframe
+  const currentPeriodSales = useMemo(() => {
+    const now = new Date();
+    let start;
+    if (timeframe === 'daily') start = startOfDay(now);
+    else if (timeframe === 'weekly') start = startOfWeek(now);
+    else start = startOfMonth(now);
+    
+    return validSales.filter(s => {
+      const sd = parseISO(s.timestamp);
+      return sd >= start && sd <= now;
+    });
+  }, [validSales, timeframe]);
+
   // 2. Dynamic Inventory Alerts
   const inventoryAlerts = useMemo(() => {
     return items.filter(item => item.stock <= (item.lowStockThreshold || 10)).sort((a,b) => a.stock - b.stock);
   }, [items]);
 
-  // 3. Core Business Stats
+  // 1.6 Filter expenses based on current timeframe
+  const currentPeriodExpenses = useMemo(() => {
+    const now = new Date();
+    let start;
+    if (timeframe === 'daily') start = startOfDay(now);
+    else if (timeframe === 'weekly') start = startOfWeek(now);
+    else start = startOfMonth(now);
+    
+    return expenses.filter(e => {
+      const ed = parseISO(e.timestamp || e.date);
+      return ed >= start && ed <= now;
+    });
+  }, [expenses, timeframe]);
+
+  // 3. Core Business Stats (Period-based)
   const stats = useMemo(() => {
-    const totalRevenue = validSales.reduce((sum, s) => sum + s.total, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const totalOrders = validSales.length;
+    const totalRevenue = currentPeriodSales.reduce((sum, s) => sum + s.total, 0);
+    const totalExpenses = currentPeriodExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalOrders = currentPeriodSales.length;
     const netProfit = totalRevenue - totalExpenses;
 
     return { totalRevenue, totalExpenses, totalOrders, netProfit };
-  }, [validSales, expenses]);
+  }, [currentPeriodSales, currentPeriodExpenses]);
 
   // 4. Trend Chart Data (Unified Revenue & Expenses)
   const chartData = useMemo(() => {
@@ -120,7 +148,7 @@ const Dashboard = () => {
   // 5. Staff Performance Mapping
   const staffPerformance = useMemo(() => {
     const performance = staff.map(s => {
-      const staffSales = validSales.filter(sale => sale.processedBy === s.name);
+      const staffSales = currentPeriodSales.filter(sale => sale.processedBy === s.name);
       return {
         name: s.name,
         orders: staffSales.length,
@@ -128,10 +156,10 @@ const Dashboard = () => {
       };
     }).sort((a, b) => b.revenue - a.revenue);
     return performance;
-  }, [validSales, staff]);
+  }, [currentPeriodSales, staff]);
   // 6. Top Selling Categories Distribution
   const categoryData = useMemo(() => {
-    const distro = validSales.reduce((acc, sale) => {
+    const distro = currentPeriodSales.reduce((acc, sale) => {
       sale.items.forEach(item => {
         const cat = item.category || 'Other';
         acc[cat] = (acc[cat] || 0) + (item.price * item.quantity);
@@ -141,12 +169,12 @@ const Dashboard = () => {
     return Object.entries(distro)
       .map(([name, value]) => ({ name, value }))
       .sort((a,b) => b.value - a.value);
-  }, [validSales]);
+  }, [currentPeriodSales]);
 
 
   // 8. Top Selling Products (Velocity)
   const productPerformance = useMemo(() => {
-    const products = validSales.reduce((acc, sale) => {
+    const products = currentPeriodSales.reduce((acc, sale) => {
       sale.items.forEach(item => {
         if (!acc[item.name]) acc[item.name] = { name: item.name, quantity: 0, revenue: 0 };
         acc[item.name].quantity += item.quantity;
@@ -155,7 +183,7 @@ const Dashboard = () => {
       return acc;
     }, {});
     return Object.values(products).sort((a,b) => b.quantity - a.quantity).slice(0, 5);
-  }, [validSales]);
+  }, [currentPeriodSales]);
 
   // 9. Audit Log Filtering
   const [auditFilter] = React.useState('All');
@@ -176,7 +204,28 @@ const Dashboard = () => {
           <h1 style={{ fontSize: 'var(--font-h1)', marginBottom: '4px' }}>Business Intelligence</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-xs)' }}>Audit logs and operational resilience</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '10px', marginRight: '10px', border: '1px solid var(--glass-border)' }}>
+            {['daily', 'weekly', 'monthly'].map(t => (
+              <button 
+                key={t}
+                onClick={() => setTimeframe(t)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '11px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: timeframe === t ? 'var(--accent-gold)' : 'transparent',
+                  color: timeframe === t ? 'black' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                  fontWeight: timeframe === t ? '700' : '500'
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
           <button 
             className="pay-button" 
             style={{ width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-deep)', color: 'white', border: '1px solid var(--accent-gold)', fontSize: 'var(--font-sm)' }}
@@ -187,11 +236,22 @@ const Dashboard = () => {
           </button>
           <button 
             className="pay-button" 
-            style={{ width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: 'var(--font-sm)' }}
+            style={{ 
+              width: 'auto', 
+              padding: '10px 20px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              background: 'rgba(212, 175, 55, 0.1)', 
+              border: '1px solid var(--accent-gold)', 
+              color: 'var(--accent-gold)',
+              fontSize: 'var(--font-xs)',
+              fontWeight: 700
+            }}
             onClick={() => setHistoryModalOpen(true)}
           >
             <RefreshCw size={18} />
-            History
+            View History
           </button>
         </div>
       </div>
@@ -224,26 +284,6 @@ const Dashboard = () => {
             <h3 style={{ fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <TrendingUp size={16} color="var(--accent-gold)" /> Performance Trends
             </h3>
-            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '8px' }}>
-              {['daily', 'weekly', 'monthly'].map(t => (
-                <button 
-                  key={t}
-                  onClick={() => setTimeframe(t)}
-                  style={{
-                    padding: '4px 12px',
-                    fontSize: '10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: timeframe === t ? 'var(--accent-gold)' : 'transparent',
-                    color: timeframe === t ? 'black' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    textTransform: 'capitalize'
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
           </div>
           <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
             <ResponsiveContainer>
@@ -407,7 +447,37 @@ const Dashboard = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={() => setZReportModalOpen(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', color: 'white' }}>Cancel</button>
-                <button onClick={() => window.print()} style={{ flex: 1, padding: '12px', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid var(--accent-gold)', borderRadius: '12px', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <button 
+                  onClick={() => {
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(`
+                      <html>
+                        <head><title>Z-Report - Settlement</title></head>
+                        <body style="font-family: monospace; padding: 30px; color: #111;">
+                          <h1 style="text-align: center; margin-bottom: 5px;">CAFE KACHINO</h1>
+                          <p style="text-align: center; margin-top: 0; font-size: 12px;">READ • SIP • RETREAT</p>
+                          <hr style="border: 0; border-top: 1px dashed #ccc;"/>
+                          <h2 style="text-align: center;">SHIFT SETTLEMENT</h2>
+                          <div style="margin: 20px 0;">
+                            <p>Date: ${format(new Date(), 'PPP p')}</p>
+                            <p>Status: UNFINALIZED (Review Copy)</p>
+                          </div>
+                          <hr style="border: 0; border-top: 1px dashed #ccc;"/>
+                          <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Cash Sales:</span><span>${settings.currencySymbol}${zReportData.cashSales.toFixed(2)}</span></div>
+                          <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Card Sales:</span><span>${settings.currencySymbol}${zReportData.cardSales.toFixed(2)}</span></div>
+                          <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Other:</span><span>${settings.currencySymbol}${zReportData.otherSales.toFixed(2)}</span></div>
+                          <hr style="border: 0; border-top: 2px solid #000;"/>
+                          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.4em; margin: 15px 0;"><span>TOTAL:</span><span>${settings.currencySymbol}${zReportData.totalTodayRevenue.toFixed(2)}</span></div>
+                          <hr style="border: 0; border-top: 2px solid #000;"/>
+                          <p style="text-align: center; margin-top: 50px; font-size: 10px;">Audit Copy - Shift Reconciliation</p>
+                        </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                    printWindow.print();
+                  }} 
+                  style={{ flex: 1, padding: '12px', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid var(--accent-gold)', borderRadius: '12px', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
                   <Receipt size={18} /> Print Report
                 </button>
               </div>
@@ -442,25 +512,28 @@ const Dashboard = () => {
                         onClick={() => {
                           const printWindow = window.open('', '_blank');
                           printWindow.document.write(`
-                            <html>
-                              <head><title>Z-Report - \${report.timestamp}</title></head>
-                              <body style="font-family: monospace; padding: 20px; color: #333;">
-                                <h1 style="text-align: center;">CAFE KACHINO</h1>
-                                <h2 style="text-align: center;">Z-REPORT</h2>
-                                <hr/>
-                                <p>Date: \${format(parseISO(report.timestamp), 'PPP p')}</p>
-                                <p>Manager: \${report.settledBy}</p>
-                                <hr/>
-                                <div style="display: flex; justify-content: space-between;"><span>Cash Sales:</span><span>\${settings.currencySymbol}\${report.cashSales.toFixed(2)}</span></div>
-                                <div style="display: flex; justify-content: space-between;"><span>Card Sales:</span><span>\${settings.currencySymbol}\${report.cardSales.toFixed(2)}</span></div>
-                                <div style="display: flex; justify-content: space-between;"><span>Other:</span><span>\${settings.currencySymbol}\${report.otherSales.toFixed(2)}</span></div>
-                                <hr/>
-                                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em;"><span>TOTAL:</span><span>\${settings.currencySymbol}\${report.totalTodayRevenue.toFixed(2)}</span></div>
-                                <hr/>
-                                <p style="text-align: center; margin-top: 50px;">Audit Copy - No Sale</p>
-                              </body>
-                            </html>
-                          `);
+                      <html>
+                        <head><title>Z-Report - ${report.timestamp}</title></head>
+                        <body style="font-family: monospace; padding: 30px; color: #111;">
+                          <h1 style="text-align: center; margin-bottom: 5px;">CAFE KACHINO</h1>
+                          <p style="text-align: center; margin-top: 0; font-size: 12px;">READ • SIP • RETREAT</p>
+                          <hr style="border: 0; border-top: 1px dashed #ccc;"/>
+                          <h2 style="text-align: center;">SHIFT SETTLEMENT</h2>
+                          <div style="margin: 20px 0;">
+                            <p>Date: ${format(parseISO(report.timestamp), 'PPP p')}</p>
+                            <p>Manager: ${report.settledBy}</p>
+                          </div>
+                          <hr style="border: 0; border-top: 1px dashed #ccc;"/>
+                          <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Cash Sales:</span><span>${settings.currencySymbol}${report.cashSales.toFixed(2)}</span></div>
+                          <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Card Sales:</span><span>${settings.currencySymbol}${report.cardSales.toFixed(2)}</span></div>
+                          <div style="display: flex; justify-content: space-between; margin: 10px 0;"><span>Other:</span><span>${settings.currencySymbol}${report.otherSales.toFixed(2)}</span></div>
+                          <hr style="border: 0; border-top: 2px solid #000;"/>
+                          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.4em; margin: 15px 0;"><span>TOTAL:</span><span>${settings.currencySymbol}${report.totalTodayRevenue.toFixed(2)}</span></div>
+                          <hr style="border: 0; border-top: 2px solid #000;"/>
+                          <p style="text-align: center; margin-top: 50px; font-size: 10px;">Audit Copy - Past Record</p>
+                        </body>
+                      </html>
+                    `);
                           printWindow.document.close();
                           printWindow.print();
                         }}
