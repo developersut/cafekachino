@@ -14,6 +14,7 @@ import {
   Home,
   User,
   ChevronDown,
+  ChevronUp,
   Layout,
   Award,
   RotateCcw,
@@ -63,6 +64,7 @@ const POS = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCheckoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [isSwitchingTable, setIsSwitchingTable] = useState(false);
+  const [isCheckoutMinimized, setCheckoutMinimized] = useState(false);
 
   // Financial States
   const [discountType, setDiscountType] = useState('percent'); // 'percent' or 'fixed'
@@ -441,215 +443,257 @@ const POS = () => {
           </AnimatePresence>
         </div>
 
-        <div className="checkout-section" style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '16px', border: '1px solid var(--glass-border)', marginTop: 'auto' }}>
-          
-          {/* Customer Selection (CRM) */}
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <User size={12} /> CUSTOMER
-              </label>
-              <button 
-                onClick={() => setNewCustomerModalOpen(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
-              >
-                + New
-              </button>
-            </div>
-            <select 
-              className="search-bar" 
-              style={{ width: '100%', fontSize: '0.75rem', padding: '8px 10px', borderColor: selectedCustomerId ? 'var(--accent-gold)' : 'var(--glass-border)' }}
-              value={selectedCustomerId || ''}
-              onChange={(e) => setSession({ selectedCustomerId: e.target.value })}
-            >
-              <option value="">👤 Walk-in Guest</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>
-                    {c.name} • {c.points} pts
-                </option>
-              ))}
-            </select>
-            {selectedCustomerId && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', padding: '10px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.1)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Award size={14} color="var(--accent-gold)" />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
-                            {customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0} pts
-                        </span>
-                    </div>
-                    {(customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0) >= (settings.loyalty?.redemptionThreshold || 100) && (
-                        <button 
-                            onClick={handleRedeemPoints}
-                            disabled={isRedeemed}
-                            style={{ 
-                              fontSize: '10px', 
-                              background: isRedeemed ? 'rgba(255,255,255,0.05)' : 'var(--accent-gold)', 
-                              color: isRedeemed ? 'var(--text-muted)' : 'black', 
-                              border: 'none', 
-                              padding: '4px 10px', 
-                              borderRadius: '6px', 
-                              fontWeight: 'bold', 
-                              cursor: isRedeemed ? 'default' : 'pointer',
-                              opacity: isRedeemed ? 0.5 : 1
-                            }}
-                        >
-                            {isRedeemed ? 'Redeemed' : `Redeem ${settings.loyalty?.redemptionValue || 5}%`}
-                        </button>
-                    )}
-                </div>
-            )}
-          </div>
-          
-          {/* Dining Mode Selector */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-            <button 
-              onClick={() => { setSession({ diningMode: 'takeaway', activeTableId: null }); }}
-              style={{
-                flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid var(--glass-border)',
-                background: diningMode === 'takeaway' ? 'var(--accent-gold)' : 'transparent',
-                color: diningMode === 'takeaway' ? 'var(--bg-deep)' : 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s',
-                fontSize: 'var(--font-xs)'
-              }}
-            >
-              <ShoppingBag size={14} /> Take-away
-            </button>
-            <button 
-              onClick={() => { setSession({ diningMode: 'dinein' }); setTableModalOpen(true); }}
-              style={{
-                flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid var(--glass-border)',
-                background: diningMode === 'dinein' ? 'var(--accent-gold)' : 'transparent',
-                color: diningMode === 'dinein' ? 'var(--bg-deep)' : 'var(--text-muted)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', cursor: 'pointer', transition: 'all 0.2s',
-                fontSize: 'var(--font-xs)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Home size={14} /> Dine-in
+        <div className="checkout-section" style={{ 
+          background: 'rgba(255,255,255,0.02)', 
+          padding: '12px', 
+          borderRadius: '16px', 
+          border: '1px solid var(--glass-border)', 
+          marginTop: 'auto',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Minimize/Expand Toggle Handle */}
+          <div 
+            onClick={() => setCheckoutMinimized(!isCheckoutMinimized)}
+            style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              padding: '4px 0', 
+              cursor: 'pointer',
+              borderBottom: !isCheckoutMinimized ? '1px solid var(--glass-border)' : 'none',
+              marginBottom: !isCheckoutMinimized ? '12px' : '0',
+              transition: 'var(--transition-smooth)'
+            }}
+          >
+            {isCheckoutMinimized ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-gold)' }}>
+                <ChevronUp size={16} />
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expand Checkout</span>
               </div>
-              {activeTableId && <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>T#{activeTableId} • {guestCount}G</span>}
-            </button>
-          </div>
-
-          {/* Summary Row */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px solid var(--glass-border)' }}>
-            <div className="summary-row" style={{ fontSize: 'var(--font-xs)' }}><span style={{ color: 'var(--text-muted)' }}>Subtotal</span><span>{settings.currencySymbol}{subtotal.toFixed(2)}</span></div>
-            {discountAmount > 0 && (
-              <div className="summary-row" style={{ fontSize: 'var(--font-xs)', color: '#ff4d4d' }}><span>Discount ({discountType === 'percent' ? discountValue + '%' : settings.currencySymbol + discountValue})</span><span>-{settings.currencySymbol}{discountAmount.toFixed(2)}</span></div>
+            ) : (
+              <ChevronDown size={18} style={{ color: 'var(--text-muted)' }} />
             )}
-            <div className="summary-row" style={{ fontSize: 'var(--font-xs)' }}><span style={{ color: 'var(--text-muted)' }}>Tax ({(settings.taxRate * 100).toFixed(1)}%)</span><span>{settings.currencySymbol}{tax.toFixed(2)}</span></div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <AnimatePresence>
+            {!isCheckoutMinimized && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                style={{ overflow: 'hidden' }}
+              >
+                {/* Customer Selection (CRM) */}
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <User size={12} /> CUSTOMER
+                    </label>
+                    <button 
+                      onClick={() => setNewCustomerModalOpen(true)}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      + New
+                    </button>
+                  </div>
+                  <select 
+                    className="search-bar" 
+                    style={{ width: '100%', fontSize: '0.75rem', padding: '8px 10px', borderColor: selectedCustomerId ? 'var(--accent-gold)' : 'var(--glass-border)' }}
+                    value={selectedCustomerId || ''}
+                    onChange={(e) => setSession({ selectedCustomerId: e.target.value })}
+                  >
+                    <option value="">👤 Walk-in Guest</option>
+                    {customers.map(c => (
+                      <option key={c.id} value={c.id}>
+                          {c.name} • {c.points} pts
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCustomerId && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', padding: '10px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', border: '1px solid rgba(212,175,55,0.1)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Award size={14} color="var(--accent-gold)" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
+                                  {customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0} pts
+                              </span>
+                          </div>
+                          {(customers.find(c => String(c.id) === String(selectedCustomerId))?.points || 0) >= (settings.loyalty?.redemptionThreshold || 100) && (
+                              <button 
+                                  onClick={handleRedeemPoints}
+                                  disabled={isRedeemed}
+                                  style={{ 
+                                    fontSize: '10px', 
+                                    background: isRedeemed ? 'rgba(255,255,255,0.05)' : 'var(--accent-gold)', 
+                                    color: isRedeemed ? 'var(--text-muted)' : 'black', 
+                                    border: 'none', 
+                                    padding: '4px 10px', 
+                                    borderRadius: '6px', 
+                                    fontWeight: 'bold', 
+                                    cursor: isRedeemed ? 'default' : 'pointer',
+                                    opacity: isRedeemed ? 0.5 : 1
+                                  }}
+                              >
+                                  {isRedeemed ? 'Redeemed' : `Redeem ${settings.loyalty?.redemptionValue || 5}%`}
+                              </button>
+                          )}
+                      </div>
+                  )}
+                </div>
+                
+                {/* Dining Mode Selector */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                  <button 
+                    onClick={() => { setSession({ diningMode: 'takeaway', activeTableId: null }); }}
+                    style={{
+                      flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid var(--glass-border)',
+                      background: diningMode === 'takeaway' ? 'var(--accent-gold)' : 'transparent',
+                      color: diningMode === 'takeaway' ? 'var(--bg-deep)' : 'var(--text-muted)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s',
+                      fontSize: 'var(--font-xs)'
+                    }}
+                  >
+                    <ShoppingBag size={14} /> Take-away
+                  </button>
+                  <button 
+                    onClick={() => { setSession({ diningMode: 'dinein' }); setTableModalOpen(true); }}
+                    style={{
+                      flex: 1, padding: '8px', borderRadius: '10px', border: '1px solid var(--glass-border)',
+                      background: diningMode === 'dinein' ? 'var(--accent-gold)' : 'transparent',
+                      color: diningMode === 'dinein' ? 'var(--bg-deep)' : 'var(--text-muted)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', cursor: 'pointer', transition: 'all 0.2s',
+                      fontSize: 'var(--font-xs)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Home size={14} /> Dine-in
+                    </div>
+                    {activeTableId && <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>T#{activeTableId} • {guestCount}G</span>}
+                  </button>
+                </div>
+
+                {/* Summary Row */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '6px', paddingBottom: '6px', borderBottom: '1px solid var(--glass-border)' }}>
+                  <div className="summary-row" style={{ fontSize: 'var(--font-xs)' }}><span style={{ color: 'var(--text-muted)' }}>Subtotal</span><span>{settings.currencySymbol}{subtotal.toFixed(2)}</span></div>
+                  {discountAmount > 0 && (
+                    <div className="summary-row" style={{ fontSize: 'var(--font-xs)', color: '#ff4d4d' }}><span>Discount ({discountType === 'percent' ? discountValue + '%' : settings.currencySymbol + discountValue})</span><span>-{settings.currencySymbol}{discountAmount.toFixed(2)}</span></div>
+                  )}
+                  <div className="summary-row" style={{ fontSize: 'var(--font-xs)' }}><span style={{ color: 'var(--text-muted)' }}>Tax ({(settings.taxRate * 100).toFixed(1)}%)</span><span>{settings.currencySymbol}{tax.toFixed(2)}</span></div>
+                </div>
+
+                {/* Payment Method Selector */}
+                <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '12px' }}>
+                  {['cash', 'card', 'other'].map(method => (
+                    <button 
+                      key={method}
+                      onClick={() => {
+                        setPaymentMethod(method);
+                        if (method !== 'cash') setAmountPaid(total);
+                      }}
+                      style={{ 
+                        flex: 1, 
+                        padding: '8px', 
+                        borderRadius: '9px', 
+                        border: 'none', 
+                        background: paymentMethod === method ? 'var(--accent-gold)' : 'transparent', 
+                        color: paymentMethod === method ? 'var(--bg-deep)' : 'var(--text-muted)',
+                        fontSize: 'var(--font-xs)',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Payment Section */}
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount Paid</label>
+                    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '1px' }}>
+                      <button onClick={() => setDiscountType('percent')} style={{ padding: '2px 6px', borderRadius: '4px', border: 'none', background: discountType === 'percent' ? 'rgba(212, 175, 55, 0.2)' : 'transparent', color: 'var(--accent-gold)', cursor: 'pointer', fontSize: '0.65rem' }}>%</button>
+                      <button onClick={() => setDiscountType('fixed')} style={{ padding: '2px 6px', borderRadius: '4px', border: 'none', background: discountType === 'fixed' ? 'rgba(212, 175, 55, 0.2)' : 'transparent', color: 'var(--accent-gold)', cursor: 'pointer', fontSize: '0.65rem' }}>{settings.currencySymbol}</button>
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="number"
+                      className="search-bar"
+                      style={{ width: '100%', height: '36px', fontSize: '0.9rem', padding: '0 30px 0 10px', textAlign: 'right', fontWeight: 600 }}
+                      placeholder="0.00"
+                      value={amountPaid || ''}
+                      onChange={(e) => setAmountPaid(Math.max(0, parseFloat(e.target.value) || 0))}
+                    />
+                    <span style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{settings.currencySymbol}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <input 
+                    type="number"
+                    className="search-bar"
+                    style={{ flex: 1, height: '32px', fontSize: 'var(--font-xs)', padding: '0 10px', opacity: 0.7 }}
+                    placeholder={discountType === 'percent' ? 'Discount %' : `Discount ${settings.currencySymbol}`}
+                    value={discountValue || ''}
+                    onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                  />
+                </div>
+
+                {amountPaid > 0 && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: '15px', padding: '10px 15px', background: 'var(--accent-gold-soft)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--accent-gold)' }}>CHANGE DUE</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-gold)' }}>{settings.currencySymbol}{changeDue.toFixed(2)}</span>
+                  </motion.div>
+                )}
+
+                {/* Dine-in Specific Controls */}
+                {diningMode === 'dinein' && activeTableId && (
+                  <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                      <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>PAYMENT STATUS</span>
+                      <button 
+                        onClick={() => setIsPaidToggle(!isPaidToggle)}
+                        style={{ 
+                          background: isPaidToggle ? '#4ade80' : 'rgba(255,255,255,0.05)', 
+                          border: 'none', 
+                          padding: '4px 12px', 
+                          borderRadius: '20px', 
+                          fontSize: '10px', 
+                          fontWeight: 'bold',
+                          color: isPaidToggle ? 'black' : 'white',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {isPaidToggle ? 'PAID' : 'UNPAID'}
+                      </button>
+                    </div>
+                    <button 
+                      className="pay-button"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)' }}
+                      onClick={() => {
+                        saveToTable(activeTableId, cart, guestCount);
+                        // Update paid status if needed
+                        useKachinoStore.getState().setTablePaid(activeTableId, isPaidToggle);
+                        clearCart();
+                        toast.success('Table context synchronized');
+                        navigate('/tables');
+                      }}
+                    >
+                      SYNC TO TABLE
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: isCheckoutMinimized ? '8px' : '0' }}>
              <span style={{ fontSize: 'var(--font-h2)', fontWeight: 700, fontFamily: 'Playfair Display' }}>Total</span>
              <span style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--accent-gold)' }}>{settings.currencySymbol}{total.toFixed(2)}</span>
           </div>
-
-          {/* Payment Method Selector */}
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '12px' }}>
-            {['cash', 'card', 'other'].map(method => (
-              <button 
-                key={method}
-                onClick={() => {
-                  setPaymentMethod(method);
-                  if (method !== 'cash') setAmountPaid(total);
-                }}
-                style={{ 
-                  flex: 1, 
-                  padding: '8px', 
-                  borderRadius: '9px', 
-                  border: 'none', 
-                  background: paymentMethod === method ? 'var(--accent-gold)' : 'transparent', 
-                  color: paymentMethod === method ? 'var(--bg-deep)' : 'var(--text-muted)',
-                  fontSize: 'var(--font-xs)',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                {method}
-              </button>
-            ))}
-          </div>
-
-          {/* Payment Section */}
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount Paid</label>
-              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '1px' }}>
-                 <button onClick={() => setDiscountType('percent')} style={{ padding: '2px 6px', borderRadius: '4px', border: 'none', background: discountType === 'percent' ? 'rgba(212, 175, 55, 0.2)' : 'transparent', color: 'var(--accent-gold)', cursor: 'pointer', fontSize: '0.65rem' }}>%</button>
-                 <button onClick={() => setDiscountType('fixed')} style={{ padding: '2px 6px', borderRadius: '4px', border: 'none', background: discountType === 'fixed' ? 'rgba(212, 175, 55, 0.2)' : 'transparent', color: 'var(--accent-gold)', cursor: 'pointer', fontSize: '0.65rem' }}>{settings.currencySymbol}</button>
-              </div>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <input 
-                type="number"
-                className="search-bar"
-                style={{ width: '100%', height: '36px', fontSize: '0.9rem', padding: '0 30px 0 10px', textAlign: 'right', fontWeight: 600 }}
-                placeholder="0.00"
-                value={amountPaid || ''}
-                onChange={(e) => setAmountPaid(Math.max(0, parseFloat(e.target.value) || 0))}
-              />
-              <span style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{settings.currencySymbol}</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <input 
-              type="number"
-              className="search-bar"
-              style={{ flex: 1, height: '32px', fontSize: 'var(--font-xs)', padding: '0 10px', opacity: 0.7 }}
-              placeholder={discountType === 'percent' ? 'Discount %' : `Discount ${settings.currencySymbol}`}
-              value={discountValue || ''}
-              onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
-            />
-          </div>
-
-          {amountPaid > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: '15px', padding: '10px 15px', background: 'var(--accent-gold-soft)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--accent-gold)' }}>CHANGE DUE</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-gold)' }}>{settings.currencySymbol}{changeDue.toFixed(2)}</span>
-            </motion.div>
-          )}
-
-          {/* Dine-in Specific Controls */}
-          {diningMode === 'dinein' && activeTableId && (
-            <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                 <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>PAYMENT STATUS</span>
-                 <button 
-                  onClick={() => setIsPaidToggle(!isPaidToggle)}
-                  style={{ 
-                    background: isPaidToggle ? '#4ade80' : 'rgba(255,255,255,0.05)', 
-                    border: 'none', 
-                    padding: '4px 12px', 
-                    borderRadius: '20px', 
-                    fontSize: '10px', 
-                    fontWeight: 'bold',
-                    color: isPaidToggle ? 'black' : 'white',
-                    cursor: 'pointer'
-                  }}
-                 >
-                   {isPaidToggle ? 'PAID' : 'UNPAID'}
-                 </button>
-              </div>
-              <button 
-                className="pay-button"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)' }}
-                onClick={() => {
-                  saveToTable(activeTableId, cart, guestCount);
-                  // Update paid status if needed
-                  useKachinoStore.getState().setTablePaid(activeTableId, isPaidToggle);
-                  clearCart();
-                  toast.success('Table context synchronized');
-                  navigate('/tables');
-                }}
-              >
-                SYNC TO TABLE
-              </button>
-            </div>
-          )}
 
           <button 
             className="pay-button" 
