@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { useKachinoStore } from '../store/useKachinoStore';
+import { exportToCSV } from '../utils/exportUtils';
 
 const AdminInventory = () => {
   const { 
@@ -155,13 +156,32 @@ const AdminInventory = () => {
       )}
         
         {activeTab === 'products' && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              className="tab" 
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: 'var(--font-sm)', fontWeight: 600 }}
+              onClick={() => exportToCSV(items, 'Kachino_Inventory')}
+            >
+              <Package size={16} /> Export CSV
+            </button>
+            <button 
+              className="pay-button" 
+              style={{ width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--font-sm)' }}
+              onClick={() => handleOpenModal()}
+            >
+              <Plus size={20} />
+              New Product
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'tables' && (
           <button 
-            className="pay-button" 
-            style={{ width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--font-sm)' }}
-            onClick={() => handleOpenModal()}
+            className="tab" 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: 'var(--font-sm)', fontWeight: 600 }}
+            onClick={() => exportToCSV(tables, 'Kachino_Tables')}
           >
-            <Plus size={20} />
-            New Product
+            <LayoutGrid size={16} /> Export CSV
           </button>
         )}
 
@@ -278,7 +298,7 @@ const AdminInventory = () => {
                         <td style={{ padding: '6px 15px' }}>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button onClick={() => handleOpenModal(item)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Edit2 size={14} /></button>
-                            <button onClick={() => { if(confirm('Delete product?')) deleteItem(item.id); }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                            <button onClick={() => { if(confirm(`Permanently delete ${item.name} from the menu?`)) deleteItem(item.id); }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -349,7 +369,7 @@ const AdminInventory = () => {
                       
                       {cat !== 'All' && (
                         <button 
-                          onClick={() => deleteCategory(cat)}
+                          onClick={() => { if(confirm(`Permanently delete category "${cat}"? Products in this category will become uncategorized.`)) deleteCategory(cat); }}
                           style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '8px', borderRadius: '10px' }}
                         >
                           <Trash2 size={18} />
@@ -407,7 +427,7 @@ const AdminInventory = () => {
                           <Edit2 size={16} />
                         </button>
                         <button 
-                          onClick={() => { if(confirm('Delete this customization?')) deleteCustomization(cust.id); }}
+                          onClick={() => { if(confirm(`Delete customization "${cust.name}"? This will remove the option from all assigned categories.`)) deleteCustomization(cust.id); }}
                           style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
                         >
                           <Trash2 size={16} />
@@ -499,7 +519,7 @@ const AdminInventory = () => {
                       </button>
                       <button 
                         onClick={() => {
-                          if (confirm('Delete this table?')) deleteTable(t.id);
+                          if (confirm(`Remove ${t.label} from floor plan? Active sessions will be lost.`)) deleteTable(t.id);
                         }}
                         style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
                       >

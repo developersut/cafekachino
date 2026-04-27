@@ -14,7 +14,8 @@ import {
   Package,
   X,
   Map,
-  Shield 
+  Shield,
+  ClipboardList
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useKachinoStore } from '../store/useKachinoStore';
@@ -89,6 +90,7 @@ const Sidebar = ({ user, logout }) => {
               <NavItem to="/admin/inventory" icon={Package} label="Inventory" title="Menu & Categories" setSidebarOpen={setSidebarOpen} activeTablesCount={activeTablesCount} />
               <NavItem to="/admin/staff" icon={UserCheck} label="Staff" title="Staff Management" setSidebarOpen={setSidebarOpen} activeTablesCount={activeTablesCount} />
               <NavItem to="/admin/expenses" icon={CreditCard} label="Expenses" title="Expenses" setSidebarOpen={setSidebarOpen} activeTablesCount={activeTablesCount} />
+              <NavItem to="/admin/logs" icon={ClipboardList} label="System Logs" title="Audit Trail" setSidebarOpen={setSidebarOpen} activeTablesCount={activeTablesCount} />
               <NavItem to="/admin/settings" icon={Sliders} label="Settings" title="System Settings" setSidebarOpen={setSidebarOpen} activeTablesCount={activeTablesCount} />
             </div>
           )}

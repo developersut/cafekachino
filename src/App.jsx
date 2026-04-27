@@ -10,12 +10,27 @@ import OrderHistory from './pages/OrderHistory';
 import AdminSettings from './pages/AdminSettings';
 import Login from './pages/Login';
 import AdminCustomers from './pages/AdminCustomers';
+import AdminLogs from './pages/AdminLogs';
 import TableLayout from './pages/TableLayout';
 import RouteProgress from './components/RouteProgress';
 import Receipt from './components/Receipt';
 import { Menu, ShoppingBag } from 'lucide-react';
 import CommandPalette from './components/CommandPalette';
 import { useKachinoStore } from './store/useKachinoStore';
+import { toast } from 'sonner';
+
+const ProtectedRoute = ({ children, isAdminRequired = false }) => {
+  const { user } = useKachinoStore();
+  
+  if (!user) return <Navigate to="/" />;
+  
+  if (isAdminRequired && user.role !== 'admin') {
+    toast.error('Access Denied', { description: 'Manager privileges required for this section.' });
+    return <Navigate to="/" />;
+  }
+  
+  return children;
+};
 
 function App() {
   const { 
@@ -120,6 +135,7 @@ function App() {
                       <NavLink to="/admin/inventory" className={({isActive}) => `mobile-nav-link ${isActive ? 'active' : ''}`}>Inventory</NavLink>
                       <NavLink to="/admin/staff" className={({isActive}) => `mobile-nav-link ${isActive ? 'active' : ''}`}>Staff</NavLink>
                       <NavLink to="/admin/expenses" className={({isActive}) => `mobile-nav-link ${isActive ? 'active' : ''}`}>Expenses</NavLink>
+                      <NavLink to="/admin/logs" className={({isActive}) => `mobile-nav-link ${isActive ? 'active' : ''}`}>Logs</NavLink>
                       <NavLink to="/admin/settings" className={({isActive}) => `mobile-nav-link ${isActive ? 'active' : ''}`}>Settings</NavLink>
                     </>
                   )}
@@ -132,18 +148,17 @@ function App() {
                   <Route path="/" element={<POS />} />
                   <Route path="/tables" element={<TableLayout />} />
                   
-                  {isAdmin && (
-                    <>
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/admin/inventory" element={<AdminInventory />} />
-                      <Route path="/admin/expenses" element={<AdminExpenses />} />
-                      <Route path="/admin/staff" element={<AdminStaff />} />
-                      <Route path="/admin/settings" element={<AdminSettings />} />
-                    </>
-                  )}
+                  {/* Admin Protected Routes */}
+                  <Route path="/dashboard" element={<ProtectedRoute isAdminRequired={true}><Dashboard /></ProtectedRoute>} />
+                  <Route path="/admin/inventory" element={<ProtectedRoute isAdminRequired={true}><AdminInventory /></ProtectedRoute>} />
+                  <Route path="/admin/expenses" element={<ProtectedRoute isAdminRequired={true}><AdminExpenses /></ProtectedRoute>} />
+                  <Route path="/admin/staff" element={<ProtectedRoute isAdminRequired={true}><AdminStaff /></ProtectedRoute>} />
+                  <Route path="/admin/logs" element={<ProtectedRoute isAdminRequired={true}><AdminLogs /></ProtectedRoute>} />
+                  <Route path="/admin/settings" element={<ProtectedRoute isAdminRequired={true}><AdminSettings /></ProtectedRoute>} />
 
-                  <Route path="/admin/customers" element={<AdminCustomers />} />
-                  <Route path="/history" element={<OrderHistory />} />
+                  {/* General Access Routes */}
+                  <Route path="/admin/customers" element={<ProtectedRoute><AdminCustomers /></ProtectedRoute>} />
+                  <Route path="/history" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>

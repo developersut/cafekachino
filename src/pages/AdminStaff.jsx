@@ -38,15 +38,21 @@ const AdminStaff = () => {
     setIsModalOpen(true);
   };
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
+    let success = false;
     if (editingStaff) {
-      updateStaff(editingStaff.id, { ...editingStaff, ...data });
-      toast.success(`${data.name} updated successfully`);
+      success = await updateStaff(editingStaff.id, { ...editingStaff, ...data });
+      if (success) {
+        toast.success(`${data.name} updated successfully`);
+        setIsModalOpen(false);
+      }
     } else {
-      addStaff(data);
-      toast.success(`${data.name} added to team`);
+      success = await addStaff(data);
+      if (success) {
+        toast.success(`${data.name} added to team`);
+        setIsModalOpen(false);
+      }
     }
-    setIsModalOpen(false);
   };
 
   return (
@@ -125,7 +131,7 @@ const AdminStaff = () => {
               <button 
                 className="tab" 
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '6px', color: '#f87171', fontSize: '0.7rem' }}
-                onClick={() => { if(confirm('Delete member?')) deleteStaff(member.id); }}
+                onClick={() => { if(confirm(`Revoke all access for ${member.name} and remove from team?`)) deleteStaff(member.id); }}
               >
                 <Trash2 size={12} /> Delete
               </button>
@@ -167,7 +173,11 @@ const AdminStaff = () => {
                   <input 
                     {...register('pin', { 
                       required: 'PIN is required', 
-                      pattern: { value: /^\d{4}$/, message: 'PIN must be exactly 4 digits' } 
+                      pattern: { value: /^\d{4}$/, message: 'PIN must be exactly 4 digits' },
+                      validate: (value) => {
+                        const isDuplicate = staff.some(s => s.pin === value && s.id !== editingStaff?.id);
+                        return !isDuplicate || 'This PIN is already assigned';
+                      }
                     })} 
                     type="password"
                     maxLength={4}

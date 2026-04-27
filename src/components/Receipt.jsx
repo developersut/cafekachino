@@ -141,7 +141,7 @@ const Receipt = ({ order }) => {
             <div style={{ fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '5px' }}>CUSTOMER: {customer.name.toUpperCase()}</div>
             <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between' }}>
                 <span>LOYALTY POINTS:</span>
-                <span style={{ fontWeight: 'bold' }}>{customer.points} (+{Math.floor(order.total)})</span>
+                <span style={{ fontWeight: 'bold' }}>{customer.points} (+{Math.floor(order.total / (settings.loyalty?.spendPerPoint || 1000))})</span>
             </div>
         </div>
       )}

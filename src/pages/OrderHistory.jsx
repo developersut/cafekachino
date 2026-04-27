@@ -73,7 +73,8 @@ const OrderHistory = () => {
     const matchesSearch = sale.id.toString().includes(searchQuery) || 
                          sale.processedBy.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "All" || sale.status === statusFilter;
-    const matchesPayment = paymentFilter === "All" || sale.paymentMethod === paymentFilter;
+    const matchesPayment = paymentFilter === "All" || 
+                          (sale.paymentMethod && sale.paymentMethod.toLowerCase() === paymentFilter.toLowerCase());
     const matchesStaff = staffFilter === "All" || sale.processedBy === staffFilter;
     
     let matchesDate = true;
@@ -207,6 +208,7 @@ const OrderHistory = () => {
           <option value="All">All Payments</option>
           <option value="cash">Cash</option>
           <option value="card">Card</option>
+          <option value="other">Other</option>
         </select>
 
         <select 

@@ -63,6 +63,7 @@ export const useKachinoStore = create(
       customers: [],
       printOrder: null,
       expenseCategories: ['Ingredients', 'Labor', 'Utilities', 'Rent & Maintenance', 'Marketing'],
+      zReports: [],
       isLocked: false,
       customizations: [
         { id: 'ice', name: 'Ice Level', options: ['None', '25%', '50%', '75%', '100%'], categories: ['Coffee', 'Tea', 'Chocolate', 'Water', 'Drinks', 'Juice'] },
@@ -125,25 +126,46 @@ export const useKachinoStore = create(
 
       // Staff actions
       addStaff: async (member) => {
+        // PIN Uniqueness Check
+        const isDuplicate = get().staff.some(s => s.pin === member.pin);
+        if (isDuplicate) {
+          toast.error('PIN Conflict', { description: 'This security PIN is already assigned to another staff member.' });
+          return false;
+        }
+
         const { data, error } = await supabase.from('staff').insert([member]).select();
         if (!error && data) {
           set(state => ({ staff: [...state.staff, data[0]] }));
           get().addLog('Admin Action', `Added team member: ${member.name}`);
           toast.success('Team member synced to cloud');
+          return true;
         } else {
           console.error('Staff Sync Error:', error);
           toast.error(`Staff sync failed: ${error?.message}`);
+          return false;
         }
       },
       updateStaff: async (id, updated) => {
+        // PIN Uniqueness Check (excluding self)
+        const isDuplicate = get().staff.some(s => s.pin === updated.pin && s.id !== id);
+        if (isDuplicate) {
+          toast.error('PIN Conflict', { description: 'This security PIN is already assigned to another staff member.' });
+          return false;
+        }
+
         set(state => ({ staff: state.staff.map(s => s.id === id ? updated : s) }));
-        await supabase.from('staff').update(updated).eq('id', id);
-        get().addLog('Admin Action', `Updated staff info`);
+        const { error } = await supabase.from('staff').update(updated).eq('id', id);
+        if (!error) {
+          get().addLog('Admin Action', `Updated staff info for ${updated.name}`);
+          return true;
+        }
+        return false;
       },
       deleteStaff: async (id) => {
+        const member = get().staff.find(s => s.id === id);
         set(state => ({ staff: state.staff.filter(s => s.id !== id) }));
         await supabase.from('staff').delete().eq('id', id);
-        get().addLog('Admin Action', `Removed staff member`);
+        get().addLog('Admin Action', `Removed staff member: ${member?.name}`);
       },
 
       addItem: async (item) => {
@@ -228,7 +250,9 @@ export const useKachinoStore = create(
             { data: staff, error: staffError },
             { data: settingsData, error: settingsError },
             { data: logs, error: logsError },
-            { data: custData, error: custDataError }
+            { data: custData, error: custDataError },
+            { data: expensesData, error: expensesError },
+            { data: zReportsData, error: zReportsError }
           ] = await Promise.all([
             supabase.from('inventory').select('*'),
             supabase.from('categories').select('*'),
@@ -238,7 +262,9 @@ export const useKachinoStore = create(
             supabase.from('staff').select('*'),
             supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
             supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50),
-            supabase.from('customizations').select('*')
+            supabase.from('customizations').select('*'),
+            supabase.from('expenses').select('*').order('timestamp', { ascending: false }).limit(200),
+            supabase.from('z_reports').select('*').order('timestamp', { ascending: false }).limit(50)
           ]);
 
           // Table Self-Healing: If table list is empty in cloud, seed defaults
@@ -281,9 +307,11 @@ export const useKachinoStore = create(
             customers: custsError ? get().customers : (customers || []),
             sales: salesError ? get().sales : (sales || []),
             staff: staffError ? get().staff : (finalStaff || []),
-            settings: settingsError ? get().settings : (finalSettings || get().settings),
+            settings: settingsError ? get().settings : (settingsData || get().settings),
             auditLogs: logsError ? get().auditLogs : (logs || []),
             customizations: custDataError ? get().customizations : (custData || get().customizations),
+            expenses: expensesError ? get().expenses : (expensesData || []),
+            zReports: zReportsError ? get().zReports : (zReportsData || []),
             isLoading: false 
           });
         } catch (error) {
@@ -668,7 +696,7 @@ export const useKachinoStore = create(
           // Loyalty Point logic
           if (sale.customerId) {
             const { loyalty } = get().settings;
-            const spendPerPoint = loyalty?.spendPerPoint || 1000;
+            const spendPerPoint = Math.max(1, loyalty?.spendPerPoint || 1000);
             const threshold = loyalty?.redemptionThreshold || 100;
             
             const earnedPoints = Math.floor(sale.total / spendPerPoint);
@@ -724,11 +752,14 @@ export const useKachinoStore = create(
         }));
 
         // Revert Customer Points
-        const customer = get().customers.find(c => c.id === sale.customerId);
+        const customer = get().customers.find(c => String(c.id) === String(sale.customerId));
         if (customer) {
+          const { loyalty } = get().settings;
+          const spendPerPoint = Math.max(1, loyalty?.spendPerPoint || 1000);
+          const pointsToRevert = Math.floor(sale.total / spendPerPoint);
+          
           get().updateCustomer(customer.id, {
-            totalSpent: Math.max(0, customer.totalSpent - sale.total),
-            points: Math.max(0, customer.points - Math.floor(sale.total))
+            points: Math.max(0, (customer.points || 0) - pointsToRevert)
           });
         }
 
@@ -793,12 +824,12 @@ export const useKachinoStore = create(
             toast.success('Customization synced to cloud');
           } else {
             console.error('Customization Sync Error:', error);
-            set(state => ({ customizations: state.customizations.filter(c => c.id !== tempId) }));
+            set(state => ({ customizations: state.customizations.filter(c => c !== tempId) }));
             toast.error(`Customization sync failed: ${error?.message}`);
           }
         } catch (e) {
           console.error('Fatal customization sync error:', e);
-          set(state => ({ customizations: state.customizations.filter(c => c.id !== tempId) }));
+          set(state => ({ customizations: state.customizations.filter(c => c !== tempId) }));
         }
       },
       updateCustomization: async (id, updated) => {
@@ -808,9 +839,41 @@ export const useKachinoStore = create(
       },
       deleteCustomization: async (id) => {
         const prev = get().customizations.find(c => c.id === id);
-        set(state => ({ customizations: state.customizations.filter(c => c.id !== id) }));
+        set(state => ({ customizations: state.customizations.filter(c => c !== id) }));
         await supabase.from('customizations').delete().eq('id', id);
         get().addLog('Admin Action', `Deleted customization: ${prev?.name}`);
+      },
+
+      // Z-Report Actions
+      saveZReport: async (report) => {
+        const newReport = { 
+          timestamp: new Date().toISOString(), 
+          ...report,
+          settledBy: get().user?.name || 'System'
+        };
+        
+        try {
+          const { data, error } = await supabase.from('z_reports').insert([newReport]).select();
+          if (!error && data) {
+            set(state => ({ zReports: [data[0], ...state.zReports].slice(0, 100) }));
+            get().addLog('Finance Action', `Z-Report Settled: ${get().settings.currencySymbol}${report.totalTodayRevenue.toFixed(2)}`);
+            toast.success('Shift record synchronized to cloud');
+            return { success: true, report: data[0] };
+          } else {
+            console.error('Z-Report Sync Error:', error);
+            // Local fallback
+            set(state => ({ zReports: [{ id: Date.now(), ...newReport }, ...state.zReports].slice(0, 100) }));
+            toast.error('Local settlement saved (Cloud sync pending)');
+            return { success: true };
+          }
+        } catch (e) {
+          console.error('Fatal Z-Report Error:', e);
+          return { success: false };
+        }
+      },
+      fetchZReports: async () => {
+        const { data, error } = await supabase.from('z_reports').select('*').order('timestamp', { ascending: false });
+        if (!error && data) set({ zReports: data });
       },
 
       setLocked: (locked) => set({ isLocked: locked }),
@@ -875,84 +938,94 @@ export const useKachinoStore = create(
         };
       },
 
-      // Mock data generation
-      generateMockData: () => {
-        const mockSales = [];
-        const mockExpenses = [];
-        const now = new Date();
-        const staffList = get().staff;
-        const menuItems = get().items;
-        
-        // Generate 30 days of diverse data
-        for (let i = 0; i < 30; i++) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toISOString();
+      // Data Resilience (Backup & Restore)
+      exportSystemData: () => {
+        const state = get();
+        const backup = {
+          version: '1.0.0',
+          timestamp: new Date().toISOString(),
+          data: {
+            items: state.items,
+            categories: state.categories,
+            staff: state.staff,
+            sales: state.sales,
+            expenses: state.expenses,
+            customers: state.customers,
+            tables: state.tables,
+            settings: state.settings,
+            customizations: state.customizations,
+            zReports: state.zReports,
+            auditLogs: state.auditLogs
+          }
+        };
+
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `kachino-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        get().addLog('System Action', 'Full system backup exported');
+      },
+
+      importSystemData: async (jsonString) => {
+        try {
+          const backup = JSON.parse(jsonString);
+          if (!backup.data || !backup.version) throw new Error('Invalid backup format');
+
+          const { data } = backup;
           
-          // Seasonal/Weekend variance
-          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-          const ordersCount = Math.floor(Math.random() * (isWeekend ? 30 : 15)) + 10;
-          
-          for (let j = 0; j < ordersCount; j++) {
-            const randomStaff = staffList[Math.floor(Math.random() * staffList.length)];
-            const itemCount = Math.floor(Math.random() * 3) + 1;
-            const items = [];
-            let subtotal = 0;
-            
-            for (let k = 0; k < itemCount; k++) {
-              const item = menuItems[Math.floor(Math.random() * menuItems.length)];
-              const qty = Math.floor(Math.random() * 2) + 1;
-              items.push({ ...item, quantity: qty });
-              subtotal += item.price * qty;
+          set({ isLoading: true });
+
+          // 1. Update Supabase
+          const tablesToRestore = [
+            { name: 'inventory', data: data.items },
+            { name: 'categories', data: data.categories.filter(c => c !== 'All').map(c => ({ name: c })) },
+            { name: 'staff', data: data.staff },
+            { name: 'sales', data: data.sales },
+            { name: 'expenses', data: data.expenses },
+            { name: 'customers', data: data.customers },
+            { name: 'tables', data: data.tables },
+            { name: 'settings', data: [data.settings] },
+            { name: 'customizations', data: data.customizations },
+            { name: 'z_reports', data: data.zReports },
+            { name: 'audit_logs', data: data.auditLogs }
+          ];
+
+          for (const table of tablesToRestore) {
+            await supabase.from(table.name).delete().neq('id', -1);
+            if (table.data && table.data.length > 0) {
+              await supabase.from(table.name).insert(table.data);
             }
-            
-            const tax = subtotal * 0.08;
-            const total = subtotal + tax;
-
-            mockSales.push({
-              id: Date.now() - (i * 86400000) - (j * 10000),
-              timestamp: date.toISOString(),
-              total,
-              subtotal,
-              tax,
-              status: Math.random() > 0.05 ? 'completed' : 'voided', // 5% void rate
-              processedBy: randomStaff?.name || 'System',
-              items,
-            });
           }
 
-          // Expenses: Daily ingredients, weekly utilities, monthly rent
-          if (i % 30 === 0) {
-            mockExpenses.push({
-              id: `rent-${i}`,
-              timestamp: dateStr,
-              category: 'Rent & Maintenance',
-              amount: 1200,
-              description: 'Monthly Store Rent',
-            });
-          }
-          
-          if (i % 7 === 0) {
-            mockExpenses.push({
-              id: `util-${i}`,
-              timestamp: dateStr,
-              category: 'Utilities',
-              amount: Math.random() * 100 + 150,
-              description: 'Weekly Utility Bill',
-            });
-          }
-
-          mockExpenses.push({
-            id: `ing-${i}`,
-            timestamp: dateStr,
-            category: 'Ingredients',
-            amount: Math.random() * 50 + 40,
-            description: 'Fresh Dairy & Beans',
+          // 2. Update Local State
+          set({
+            items: data.items,
+            categories: data.categories,
+            staff: data.staff,
+            sales: data.sales,
+            expenses: data.expenses,
+            customers: data.customers,
+            tables: data.tables,
+            settings: data.settings,
+            customizations: data.customizations,
+            zReports: data.zReports,
+            auditLogs: data.auditLogs,
+            isLoading: false
           });
+
+          get().addLog('System Action', 'Full system restoration completed');
+          toast.success('Data Restoration Successful');
+          return true;
+        } catch (err) {
+          console.error('Restoration Failed:', err);
+          set({ isLoading: false });
+          toast.error('Restoration Failed', { description: err.message });
+          return false;
         }
-        
-        set({ sales: mockSales, expenses: mockExpenses });
-        get().addLog('System Action', 'Generated high-fidelity simulation data for 30 days');
       },
     }),
     {
@@ -971,6 +1044,7 @@ export const useKachinoStore = create(
         customers: state.customers,
         tables: state.tables,
         customizations: state.customizations,
+        zReports: state.zReports,
       }),
     }
   )

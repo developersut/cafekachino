@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   RefreshCw,
   Plus,
-  Receipt
+  Receipt,
+  X
 } from 'lucide-react';
 import { format, subDays, subWeeks, subMonths, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { useKachinoStore } from '../store/useKachinoStore';
@@ -28,11 +29,13 @@ const Dashboard = () => {
   const { 
     sales = [], expenses = [], items = [], staff = [], auditLogs = [],
     expenseCategories = [],
-    generateMockData, addLog, restockItem,
+    zReports = [],
+    saveZReport,
     settings 
   } = useKachinoStore();
 
   const [isZReportModalOpen, setZReportModalOpen] = React.useState(false);
+  const [isHistoryModalOpen, setHistoryModalOpen] = React.useState(false);
   const [timeframe, setTimeframe] = React.useState('daily'); // daily, weekly, monthly
 
   const zReportData = useMemo(() => {
@@ -47,10 +50,12 @@ const Dashboard = () => {
     return { cashSales, cardSales, otherSales, totalTodayRevenue, count: todaySales.length };
   }, [sales]);
 
-  const handleCloseRegister = () => {
-    addLog('Shift Management', `Register Closed. Total Expected: ${settings.currencySymbol}${zReportData.totalTodayRevenue.toFixed(2)}`);
-    setZReportModalOpen(false);
-    toast.success('Register Closed - Z-Report Saved');
+  const handleCloseRegister = async () => {
+    const success = await saveZReport(zReportData);
+    if (success) {
+      setZReportModalOpen(false);
+      toast.success('Register Closed - Shift record synchronized');
+    }
   };
 
   // 1. Filter out voided sales for analytics
@@ -161,7 +166,7 @@ const Dashboard = () => {
     { title: "Total Revenue", value: `${settings?.currencySymbol || '$'}${stats.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: DollarSign, color: "#d4af37", trend: 12 },
     { title: "Total Orders", value: stats.totalOrders.toString(), icon: ShoppingBag, color: "#3b82f6", trend: 8 },
     { title: "Total Expenses", value: `${settings?.currencySymbol || '$'}${stats.totalExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: "#f87171", trend: -5 },
-    { title: "Net Profit", value: `${settings?.currencySymbol || '$'}${stats.netProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: Users, color: "#10b981", trend: 15 }
+    { title: "Net Profit", value: `${settings?.currencySymbol || '$'}${stats.netProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: "#10b981", trend: 15 }
   ];
 
   return (
@@ -182,11 +187,11 @@ const Dashboard = () => {
           </button>
           <button 
             className="pay-button" 
-            style={{ width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--font-sm)' }}
-            onClick={generateMockData}
+            style={{ width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', fontSize: 'var(--font-sm)' }}
+            onClick={() => setHistoryModalOpen(true)}
           >
-            <Database size={18} />
-            Simulation Data
+            <RefreshCw size={18} />
+            History
           </button>
         </div>
       </div>
@@ -407,6 +412,66 @@ const Dashboard = () => {
                 </button>
               </div>
               <button onClick={handleCloseRegister} className="pay-button" style={{ width: '100%' }}>Finalize & Close Shift</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Z-Report History Modal */}
+      {isHistoryModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '1.5rem' }}>Settlement History</h2>
+              <button onClick={() => setHistoryModalOpen(false)} style={{ background: 'none', border: 'none', color: 'white' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {zReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No past settlements found</div>
+              ) : (
+                zReports.map(report => (
+                  <div key={report.id} className="menu-card" style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{format(parseISO(report.timestamp), 'PPP p')}</div>
+                      <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Settled by: {report.settledBy} • {report.count} Orders</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-gold)' }}>{settings.currencySymbol}{report.totalTodayRevenue.toFixed(2)}</div>
+                      <button 
+                        onClick={() => {
+                          const printWindow = window.open('', '_blank');
+                          printWindow.document.write(`
+                            <html>
+                              <head><title>Z-Report - \${report.timestamp}</title></head>
+                              <body style="font-family: monospace; padding: 20px; color: #333;">
+                                <h1 style="text-align: center;">CAFE KACHINO</h1>
+                                <h2 style="text-align: center;">Z-REPORT</h2>
+                                <hr/>
+                                <p>Date: \${format(parseISO(report.timestamp), 'PPP p')}</p>
+                                <p>Manager: \${report.settledBy}</p>
+                                <hr/>
+                                <div style="display: flex; justify-content: space-between;"><span>Cash Sales:</span><span>\${settings.currencySymbol}\${report.cashSales.toFixed(2)}</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Card Sales:</span><span>\${settings.currencySymbol}\${report.cardSales.toFixed(2)}</span></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Other:</span><span>\${settings.currencySymbol}\${report.otherSales.toFixed(2)}</span></div>
+                                <hr/>
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em;"><span>TOTAL:</span><span>\${settings.currencySymbol}\${report.totalTodayRevenue.toFixed(2)}</span></div>
+                                <hr/>
+                                <p style="text-align: center; margin-top: 50px;">Audit Copy - No Sale</p>
+                              </body>
+                            </html>
+                          `);
+                          printWindow.document.close();
+                          printWindow.print();
+                        }}
+                        style={{ fontSize: '10px', color: 'var(--accent-gold)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        Print Copy
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

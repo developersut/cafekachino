@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Save, Percent, Settings as SettingsIcon, AlertCircle, Store, MapPin, 
-  Phone, Globe, Layout, Plus, Trash2, Hash, Receipt, Shield, ShieldAlert, Award
+  Phone, Globe, Layout, Plus, Trash2, Hash, Receipt, Shield, ShieldAlert, Award,
+  Database, Download, Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKachinoStore } from '../store/useKachinoStore';
 
 const AdminSettings = () => {
-  const { settings, updateSettings, tables, addTable, deleteTable, updateTable } = useKachinoStore();
+  const { 
+    settings, updateSettings, tables, addTable, deleteTable, updateTable,
+    exportSystemData, importSystemData 
+  } = useKachinoStore();
   const [taxRate, setTaxRate] = useState(((settings?.taxRate || 0) * 100).toString());
   const [fiscalMeta, setFiscalMeta] = useState({
     fiscalId: settings?.fiscalId || '',
@@ -474,6 +478,81 @@ const AdminSettings = () => {
                 </button>
               </div>
             ))}
+          </div>
+        </motion.div>
+
+        {/* Data Management (NEW) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="menu-card" 
+          style={{ padding: '22px 15px', cursor: 'default' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '8px', borderRadius: '8px' }}>
+              <Database size={18} color="#3b82f6" />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '0.9rem' }}>Data Management</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Backup and restoration services</p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+              Securely export your entire system state including inventory, sales history, and customer data. 
+              Restore from a previous backup to recover your environment.
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '5px' }}>
+              <button 
+                className="tab"
+                style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)' }}
+                onClick={() => exportSystemData()}
+              >
+                <Download size={20} color="var(--accent-gold)" />
+                <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Export Backup</span>
+              </button>
+              
+              <label 
+                className="tab"
+                style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', cursor: 'pointer' }}
+              >
+                <Upload size={20} color="#10b981" />
+                <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Restore Data</span>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  style={{ display: 'none' }} 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    if (confirm('CAUTION: Restoring data will overwrite your current environment. This action cannot be undone. Proceed?')) {
+                      const reader = new FileReader();
+                      reader.onload = async (event) => {
+                        const content = event.target?.result;
+                        if (typeof content === 'string') {
+                          const success = await importSystemData(content);
+                          if (success) {
+                            toast.success('System Restoration Complete');
+                            setTimeout(() => window.location.reload(), 1500);
+                          }
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                    e.target.value = ''; // Reset input
+                  }}
+                />
+              </label>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: 'rgba(248, 113, 113, 0.05)', borderRadius: '10px', border: '1px solid rgba(248, 113, 113, 0.1)', marginTop: '5px' }}>
+               <AlertCircle size={14} color="#f87171" />
+               <span style={{ fontSize: '0.65rem', color: '#f87171' }}>Restoration will sync all data to the cloud instantly.</span>
+            </div>
           </div>
         </motion.div>
       </div>

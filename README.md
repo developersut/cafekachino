@@ -42,7 +42,7 @@
 ### 1. Daily Operations (Staff)
 - **Login**: Enter your unique 4-digit PIN to access the terminal.
 - **POS**: Select items from the menu. Tap "Dine-In" to assign to a table or "Takeaway" for quick checkout.
-- **Points**: Search for a customer by phone or name to apply loyalty points (1 point per $1 spent).
+- **Points**: Search for a customer by phone or name to apply loyalty points (1 point per $1000 spent).
 - **Checkout**: Choose Cash/Card. The system will automatically revert to the Lock Screen if "High Security" is enabled.
 
 ### 2. Administrative Tasks (Admin Only)
