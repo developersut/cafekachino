@@ -270,11 +270,16 @@ export const useKachinoStore = create(
           // Table Self-Healing: If table list is empty in cloud, seed defaults
           let finalTables = tables;
           if (!tablesError && (!tables || tables.length === 0)) {
-            const defaultTables = [...Array(12)].map((_, i) => ({ 
-              id: i + 1, label: `Table ${i + 1}`, status: 'available', capacity: 4, guestCount: 0, currentOrder: []
-            }));
-            const { data: seeded } = await supabase.from('tables').insert(defaultTables).select();
-            finalTables = seeded || defaultTables;
+            const localTables = get().tables;
+            if (localTables && localTables.length > 0) {
+              finalTables = localTables;
+            } else {
+              const defaultTables = [...Array(12)].map((_, i) => ({ 
+                id: i + 1, label: `Table ${i + 1}`, status: 'available', capacity: 4, guestCount: 0, currentOrder: []
+              }));
+              const { data: seeded } = await supabase.from('tables').insert(defaultTables).select();
+              finalTables = seeded || defaultTables;
+            }
           }
 
           // Staff Self-Healing
@@ -303,7 +308,30 @@ export const useKachinoStore = create(
           set({ 
             items: itemsError ? get().items : (items || []),
             categories: catsError ? get().categories : (categories?.length ? categories.map(c => c.name) : get().categories),
-            tables: tablesError ? get().tables : (finalTables || []),
+            tables: tablesError ? get().tables : (finalTables || []).map(cloudTable => {
+              const localTable = get().tables?.find(t => t.id === cloudTable.id);
+              if (!localTable) return cloudTable;
+              
+              const localTime = new Date(localTable.lastUpdated || 0).getTime();
+              const cloudTime = new Date(cloudTable.lastUpdated || 0).getTime();
+              
+              // If local state is newer than cloud (or cloud lacks timestamps),
+              // preserve the local state to prevent data loss.
+              if (localTime > cloudTime) {
+                return { ...cloudTable, ...localTable };
+              }
+              
+              // Otherwise, cloud is newer. Merge safely.
+              return {
+                ...localTable,
+                ...cloudTable,
+                currentOrder: cloudTable.currentOrder !== undefined ? cloudTable.currentOrder : (localTable?.currentOrder || []),
+                status: cloudTable.status !== undefined ? cloudTable.status : (localTable?.status || 'available'),
+                guestCount: cloudTable.guestCount !== undefined ? cloudTable.guestCount : (localTable?.guestCount || 0),
+                sessionStartTime: cloudTable.sessionStartTime !== undefined ? cloudTable.sessionStartTime : (localTable?.sessionStartTime || null),
+                isPaid: cloudTable.isPaid !== undefined ? cloudTable.isPaid : (localTable?.isPaid || false)
+              };
+            }),
             customers: custsError ? get().customers : (customers || []),
             sales: salesError ? get().sales : (sales || []),
             staff: staffError ? get().staff : (finalStaff || []),
@@ -324,7 +352,27 @@ export const useKachinoStore = create(
         supabase.channel('table-changes')
           .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tables' }, payload => {
             set(state => ({
-              tables: state.tables.map(t => t.id === payload.new.id ? payload.new : t)
+              tables: state.tables.map(t => {
+                if (t.id === payload.new.id) {
+                  const localTime = new Date(t.lastUpdated || 0).getTime();
+                  const cloudTime = new Date(payload.new.lastUpdated || 0).getTime();
+                  
+                  if (localTime > cloudTime) {
+                    return t; // Local is newer, ignore this broadcast
+                  }
+                  
+                  return {
+                    ...t,
+                    ...payload.new,
+                    currentOrder: payload.new.currentOrder !== undefined ? payload.new.currentOrder : (t.currentOrder || []),
+                    status: payload.new.status !== undefined ? payload.new.status : (t.status || 'available'),
+                    guestCount: payload.new.guestCount !== undefined ? payload.new.guestCount : (t.guestCount || 0),
+                    sessionStartTime: payload.new.sessionStartTime !== undefined ? payload.new.sessionStartTime : (t.sessionStartTime || null),
+                    isPaid: payload.new.isPaid !== undefined ? payload.new.isPaid : (t.isPaid || false)
+                  };
+                }
+                return t;
+              })
             }));
           })
           .subscribe();
@@ -1091,6 +1139,10 @@ export const useKachinoStore = create(
         tables: state.tables,
         customizations: state.customizations,
         zReports: state.zReports,
+        activeTableId: state.activeTableId,
+        diningMode: state.diningMode,
+        guestCount: state.guestCount,
+        selectedCustomerId: state.selectedCustomerId,
       }),
     }
   )
