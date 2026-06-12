@@ -19,7 +19,9 @@ import {
   RefreshCw,
   Plus,
   Receipt,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { format, subDays, subWeeks, subMonths, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { useKachinoStore } from '../store/useKachinoStore';
@@ -37,6 +39,7 @@ const Dashboard = () => {
   const [isZReportModalOpen, setZReportModalOpen] = React.useState(false);
   const [isHistoryModalOpen, setHistoryModalOpen] = React.useState(false);
   const [timeframe, setTimeframe] = React.useState('daily'); // daily, weekly, monthly
+  const [chartOffset, setChartOffset] = React.useState(0);
 
   const zReportData = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -111,19 +114,20 @@ const Dashboard = () => {
     return [...Array(periods)].map((_, i) => {
       let d, dayStr, start, end;
       const now = new Date();
+      const indexOffset = i + (chartOffset * periods);
 
       if (timeframe === 'daily') {
-        d = subDays(now, i);
+        d = subDays(now, indexOffset);
         dayStr = format(d, 'MMM dd');
         start = startOfDay(d);
         end = endOfDay(d);
       } else if (timeframe === 'weekly') {
-        d = subWeeks(now, i);
+        d = subWeeks(now, indexOffset);
         start = startOfWeek(d);
         end = endOfWeek(d);
         dayStr = `${format(start, 'MMM dd')} - ${format(end, 'dd')}`;
       } else {
-        d = subMonths(now, i);
+        d = subMonths(now, indexOffset);
         start = startOfMonth(d);
         end = endOfMonth(d);
         dayStr = format(d, 'MMM yyyy');
@@ -143,7 +147,7 @@ const Dashboard = () => {
       
       return { name: dayStr, revenue, expense };
     }).reverse();
-  }, [validSales, expenses, timeframe]);
+  }, [validSales, expenses, timeframe, chartOffset]);
 
   // 5. Staff Performance Mapping
   const staffPerformance = useMemo(() => {
@@ -209,7 +213,10 @@ const Dashboard = () => {
             {['daily', 'weekly', 'monthly'].map(t => (
               <button 
                 key={t}
-                onClick={() => setTimeframe(t)}
+                onClick={() => {
+                  setTimeframe(t);
+                  setChartOffset(0);
+                }}
                 style={{
                   padding: '6px 14px',
                   fontSize: '11px',
@@ -280,10 +287,76 @@ const Dashboard = () => {
       <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '20px' }}>
         {/* Revenue Trends */}
         <div className="menu-card" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <TrendingUp size={16} color="var(--accent-gold)" /> Performance Trends
+              {chartData.length > 0 && (
+                <span style={{ 
+                  fontSize: '10px', 
+                  color: 'var(--accent-gold)', 
+                  background: 'rgba(212, 175, 55, 0.1)', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  marginLeft: '8px',
+                  border: '1px solid rgba(212, 175, 55, 0.2)',
+                  fontWeight: 500
+                }}>
+                  {chartData[0].name} – {chartData[chartData.length - 1].name}
+                </span>
+              )}
             </h3>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button 
+                onClick={() => setChartOffset(prev => prev + 1)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--glass-border)',
+                  color: 'var(--text-normal)',
+                  borderRadius: '8px',
+                  padding: '5px 10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+                title="Previous Period"
+              >
+                <ChevronLeft size={14} /> Previous
+              </button>
+              
+              {chartOffset > 0 && (
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '600' }}>
+                  Page {chartOffset + 1}
+                </span>
+              )}
+              
+              <button 
+                onClick={() => setChartOffset(prev => Math.max(0, prev - 1))}
+                disabled={chartOffset === 0}
+                style={{
+                  background: chartOffset === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--glass-border)',
+                  color: chartOffset === 0 ? 'var(--text-muted)' : 'var(--text-normal)',
+                  borderRadius: '8px',
+                  padding: '5px 10px',
+                  cursor: chartOffset === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  opacity: chartOffset === 0 ? 0.4 : 1,
+                  transition: 'all 0.2s'
+                }}
+                title="Next Period"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
           <div style={{ width: '100%', height: '240px', minHeight: '240px' }}>
             <ResponsiveContainer>
