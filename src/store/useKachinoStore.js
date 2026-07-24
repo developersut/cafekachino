@@ -258,12 +258,12 @@ export const useKachinoStore = create(
             supabase.from('categories').select('*'),
             supabase.from('tables').select('*').order('id', { ascending: true }),
             supabase.from('customers').select('*'),
-            supabase.from('sales').select('*').order('timestamp', { ascending: false }).limit(100),
+            supabase.from('sales').select('*').order('timestamp', { ascending: false }),
             supabase.from('staff').select('*'),
             supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
-            supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50),
+            supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }),
             supabase.from('customizations').select('*'),
-            supabase.from('expenses').select('*').order('timestamp', { ascending: false }).limit(200),
+            supabase.from('expenses').select('*').order('timestamp', { ascending: false }),
             supabase.from('z_reports').select('*').order('timestamp', { ascending: false }).limit(50)
           ]);
 
@@ -899,6 +899,10 @@ export const useKachinoStore = create(
       fetchSales: async () => {
         const { data, error } = await supabase.from('sales').select('*').order('timestamp', { ascending: false });
         if (!error && data) set({ sales: data });
+      },
+      fetchLogs: async () => {
+        const { data, error } = await supabase.from('audit_logs').select('*').order('timestamp', { ascending: false });
+        if (!error && data) set({ auditLogs: data });
       },
       
       // Customization actions

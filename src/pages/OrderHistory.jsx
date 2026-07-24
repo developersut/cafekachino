@@ -27,7 +27,12 @@ import { exportToCSV } from '../utils/exportUtils';
 import Receipt from '../components/Receipt';
 
 const OrderHistory = () => {
-  const { sales = [], voidSale, deleteSale, user, settings } = useKachinoStore();
+  const { sales = [], voidSale, deleteSale, user, settings, fetchSales } = useKachinoStore();
+  
+  React.useEffect(() => {
+    fetchSales();
+  }, [fetchSales]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -98,6 +103,42 @@ const OrderHistory = () => {
 
     return matchesSearch && matchesStatus && matchesDate && matchesPayment && matchesStaff;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset page to 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, dateRange, paymentFilter, staffFilter]);
+
+  const sortedSales = React.useMemo(() => {
+    return [...filteredSales].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, [filteredSales]);
+
+  const paginatedSales = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return sortedSales.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedSales, currentPage]);
+
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   return (
     <div className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -253,7 +294,7 @@ const OrderHistory = () => {
               </tr>
             </thead>
             <tbody>
-              {[...filteredSales].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).map((sale, index) => (
+              {paginatedSales.map((sale, index) => (
                 <motion.tr 
                   key={sale.id}
                   initial={{ opacity: 0, x: -10 }}
@@ -368,6 +409,80 @@ const OrderHistory = () => {
             </div>
           )}
         </div>
+
+        {/* Pagination Bar */}
+        {filteredSales.length > 0 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            padding: '12px 20px', 
+            background: 'rgba(255,255,255,0.02)', 
+            borderTop: '1px solid var(--glass-border)',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredSales.length)} of {filteredSales.length} entries
+            </span>
+            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+              <button 
+                onClick={() => setCurrentPage(1)} 
+                disabled={currentPage === 1}
+                className="tab"
+                style={{ padding: '6px 12px', fontSize: '0.7rem', opacity: currentPage === 1 ? 0.4 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                First
+              </button>
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                disabled={currentPage === 1}
+                className="tab"
+                style={{ padding: '6px 12px', fontSize: '0.7rem', opacity: currentPage === 1 ? 0.4 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                Prev
+              </button>
+              
+              {getPageNumbers().map((p, idx) => (
+                p === '...' ? (
+                  <span key={idx} style={{ padding: '4px 8px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>...</span>
+                ) : (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentPage(p)}
+                    className={`tab ${currentPage === p ? 'active' : ''}`}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.7rem',
+                      background: currentPage === p ? 'var(--accent-gold-soft)' : 'transparent',
+                      borderColor: currentPage === p ? 'var(--accent-gold)' : 'var(--glass-border)',
+                      color: currentPage === p ? 'var(--accent-gold)' : 'var(--text-white)'
+                    }}
+                  >
+                    {p}
+                  </button>
+                )
+              ))}
+
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                disabled={currentPage === totalPages}
+                className="tab"
+                style={{ padding: '6px 12px', fontSize: '0.7rem', opacity: currentPage === totalPages ? 0.4 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+              >
+                Next
+              </button>
+              <button 
+                onClick={() => setCurrentPage(totalPages)} 
+                disabled={currentPage === totalPages}
+                className="tab"
+                style={{ padding: '6px 12px', fontSize: '0.7rem', opacity: currentPage === totalPages ? 0.4 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Void Confirmation Modal */}
